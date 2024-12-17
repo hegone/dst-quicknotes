@@ -48,6 +48,8 @@ local NotepadWidget = Class(Screen, function(self)
     self.editor:EnableScrollEditWindow(true)
     self.editor:SetTextLengthLimit(10000)
     self.editor:SetColour(1, 1, 1, 1)
+    self.editor:SetIdleColour(1, 1, 1, 1)  -- Set color when not focused
+    self.editor:SetEditColour(1, 1, 1, 1)  -- Set color when focused
     self.editor:SetString("")
     
     -- Save indicator
