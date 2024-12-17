@@ -20,20 +20,18 @@ local notepad = nil
 local function ToggleNotepad()
     print("Toggle Notepad called, key pressed:", TOGGLE_KEY)
     
-    if not _G.ThePlayer or not _G.ThePlayer.HUD then 
+    if not _G.ThePlayer or not _G.ThePlayer.HUD then
         print("No player or HUD found")
-        return 
+        return
     end
     
-    if not notepad then
-        print("Creating new notepad")
-        notepad = _G.NotepadWidget()
-    end
-    
-    if notepad.isOpen then
+    if notepad and notepad.isOpen then
         print("Closing notepad")
         notepad:Close()
+        notepad = nil
     else
+        print("Creating new notepad")
+        notepad = _G.NotepadWidget()
         print("Opening notepad")
         _G.TheFrontEnd:PushScreen(notepad)
     end

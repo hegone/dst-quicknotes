@@ -12,9 +12,7 @@ local NotepadWidget = Class(Screen, function(self)
     print("Creating NotepadWidget")
 
     self.isOpen = false
-    self.inst = CreateEntity() -- Create an entity for timing purposes
-    
-    -- Initialize timers
+    -- Initialize timers (using existing UI inst from Screen)
     self.save_timer = nil
     self.auto_save_timer = nil
     self.focus_task = nil
@@ -212,10 +210,6 @@ function NotepadWidget:OnControl(control, down)
 end
 
 function NotepadWidget:OnDestroy()
-    if self.inst then
-        self.inst:Remove() -- Clean up the entity
-    end
-    
     self:StopAutoSave()
     
     if self.save_timer then
