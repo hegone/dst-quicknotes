@@ -12,6 +12,12 @@ local NotepadWidget = Class(Screen, function(self)
     print("Creating NotepadWidget")
 
     self.isOpen = false
+    -- Dragging state
+    self.dragging = false
+    self.drag_start_x = 0
+    self.drag_start_y = 0
+    self.widget_start_x = 0
+    self.widget_start_y = 0
     -- Initialize timers (using existing UI inst from Screen)
     self.save_timer = nil
     self.auto_save_timer = nil
@@ -48,9 +54,18 @@ local NotepadWidget = Class(Screen, function(self)
     self.editor:EnableScrollEditWindow(true)
     self.editor:SetTextLengthLimit(10000)
     self.editor:SetColour(1, 1, 1, 1)
-    self.editor:SetIdleColour(1, 1, 1, 1)  -- Set color when not focused
-    self.editor:SetEditColour(1, 1, 1, 1)  -- Set color when focused
     self.editor:SetString("")
+    
+    -- Setup focus handlers
+    function self.editor:OnGainFocus()
+        TextEdit.OnGainFocus(self)
+        self:SetColour(1, 1, 1, 1) -- ensures text stays white on focus
+    end
+    
+    function self.editor:OnLoseFocus()
+        TextEdit.OnLoseFocus(self)
+        self:SetColour(1, 1, 1, 1) -- ensures text remains white when not focused
+    end
     
     -- Save indicator
     self.save_indicator = self.root:AddChild(Text(DEFAULTFONT, 20, ""))
@@ -68,12 +83,48 @@ local NotepadWidget = Class(Screen, function(self)
     
     -- Setup keyboard handlers
     self:SetupKeyboardHandlers()
-    
     -- Load saved notes
     self:LoadNotes()
     print("NotepadWidget created successfully")
     self:Hide()
+
+    -- Make title bar draggable
+    self.title:SetClickable(true)
 end)
+
+function NotepadWidget:OnUpdate()
+    if self.dragging and TheInput:IsMouseDown(MOUSEBUTTON_LEFT) then
+        local mousepos = TheInput:GetScreenPosition()
+        local dx = mousepos.x - self.drag_start_x
+        local dy = mousepos.y - self.drag_start_y
+        self.root:SetPosition(self.widget_start_x + dx, self.widget_start_y + dy)
+    else
+        self.dragging = false
+    end
+end
+
+function NotepadWidget:OnMouseButton(button, down, x, y)
+    if button == MOUSEBUTTON_LEFT then
+        if down then
+            -- Only start dragging if clicking on the title
+            local title_pos = self.title:GetWorldPosition()
+            local title_w, title_h = self.title:GetRegionSize()
+            if math.abs(y - title_pos.y) <= title_h/2 then
+                self.dragging = true
+                local mousepos = TheInput:GetScreenPosition()
+                self.drag_start_x = mousepos.x
+                self.drag_start_y = mousepos.y
+                local pos = self.root:GetPosition()
+                self.widget_start_x = pos.x
+                self.widget_start_y = pos.y
+                return true
+            end
+        else
+            self.dragging = false
+        end
+    end
+    return NotepadWidget._base.OnMouseButton(self, button, down, x, y)
+end
 
 function NotepadWidget:SetupKeyboardHandlers()
     self.keyboard_handlers = {
