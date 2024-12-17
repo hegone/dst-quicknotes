@@ -7,6 +7,12 @@ local Text = require "widgets/text"
 
 local NotepadWidget = Class(Screen, function(self)
     Screen._ctor(self, "NotepadWidget")
+    print("Creating NotepadWidget")
+    
+    if not _G.ThePlayer or not _G.ThePlayer.HUD then
+        print("Warning: Attempting to create NotepadWidget before player initialization")
+        return
+    end
     
     self.isOpen = false
     
@@ -70,32 +76,29 @@ local NotepadWidget = Class(Screen, function(self)
         end)
     end
     
-    -- Add fade in/out animations
-    self.default_scale = 1
-    self.root:SetScale(0)
+    print("NotepadWidget created successfully")
+    self:Hide() -- Start hidden
 end)
 
 function NotepadWidget:OnBecomeActive()
+    print("NotepadWidget becoming active")
     NotepadWidget._base.OnBecomeActive(self)
     self:Show()
     self.isOpen = true
-    
-    -- Fade in animation
-    self.root:ScaleTo(0, self.default_scale, .2)
+    self.root:ScaleTo(0, 1, .2)
 end
 
 function NotepadWidget:OnBecomeInactive()
+    print("NotepadWidget becoming inactive")
     NotepadWidget._base.OnBecomeInactive(self)
     self:Hide()
     self.isOpen = false
-    
-    -- Reset scale for next open
-    self.root:SetScale(0)
 end
 
 function NotepadWidget:Close()
+    print("NotepadWidget closing")
     self:SaveNotes()
-    TheFrontEnd:PopScreen(self)
+    _G.TheFrontEnd:PopScreen(self)
 end
 
 function NotepadWidget:SaveNotes()
