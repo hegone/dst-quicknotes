@@ -1,5 +1,20 @@
 name = "Quick Notes"
-description = "A handy notepad for jotting down notes that persist across caves and reloads!"
+description = 
+
+[[A handy notepad for jotting down notes that persist across worlds, caves, and game restarts.
+
+Features:
+- Draggable window (drag title bar)
+- Auto-saves every 30 seconds
+- Supports up to 10,000 characters
+- Click outside to close
+
+Keyboard Shortcuts:
+- Press N (configurable) to toggle
+- Ctrl+S to save manually
+- ESC to close
+- Enter for new lines]]
+
 author = "Lumen"
 version = "1.0.0"
 

@@ -39,27 +39,42 @@ local NotepadWidget = Class(Screen, function(self)
     self.root:SetScaleMode(SCALEMODE_PROPORTIONAL)
     self.root:SetPosition(0, 0)
     
-    -- Background shadow
-    self.bg_shadow = self.root:AddChild(Image("images/hud.xml", "craft_slot.tex"))
+    -- Subtle shadow for depth
+    self.bg_shadow = self.root:AddChild(Image("images/global_redux.xml", "item_frame_shadow.tex"))
     self.bg_shadow:SetSize(520, 420)
     self.bg_shadow:SetPosition(5, -5)
-    self.bg_shadow:SetTint(0, 0, 0, 0.5)
+    self.bg_shadow:SetTint(0, 0, 0, 0.3)
     
-    -- Main wooden background
-    self.bg = self.root:AddChild(Image("images/hud.xml", "craft_slot.tex"))
+    -- Transparent background with click handling
+    self.bg = self.root:AddChild(Image("images/global_redux.xml", "menu_scrollingframe.tex"))
     self.bg:SetSize(500, 400)
-    self.bg:SetTint(0.7, 0.7, 0.7, 1)
+    self.bg:SetTint(1, 1, 1, 0)  -- Fully transparent
+    self.bg:SetClickable(true)
+    self.bg.OnMouseButton = function(_, button, down, x, y)
+        if button == MOUSEBUTTON_LEFT and down then
+            if self.editor then
+                self.editor:SetFocus()
+            end
+            return true
+        end
+        return false
+    end
     
-    -- Frame overlay for worn effect
-    self.frame = self.root:AddChild(Image("images/hud.xml", "craft_slot.tex"))
-    self.frame:SetSize(500, 400)
-    self.frame:SetTint(0.4, 0.4, 0.4, 0.3)
+    -- Frame overlay for wooden texture
+    -- Wooden frame with adjusted opacity
+    self.frame = self.root:AddChild(Image("images/global_redux.xml", "menu_woodframe.tex"))
+    self.frame:SetSize(510, 410)
+    self.frame:SetTint(0.9, 0.8, 0.7, 0.8)  -- Slightly transparent warm wood color
     
-    -- Title
-    self.title = self.root:AddChild(Text(TITLEFONT, 30, "Quick Notes"))
+    -- Title with subtle wooden header
+    self.title_bg = self.root:AddChild(Image("images/global_redux.xml", "menu_header.tex"))
+    self.title_bg:SetSize(510, 45)
+    self.title_bg:SetPosition(0, 160)
+    self.title_bg:SetTint(0.8, 0.7, 0.6, 0.9)  -- Semi-transparent warm wood
+    
+    self.title = self.root:AddChild(Text(HEADERFONT, 30, "Quick Notes"))
     self.title:SetPosition(0, 160)
-    self.title:SetColour(0.9, 0.8, 0.6, 1)  -- Warmer color for wooden theme
-    
+    self.title:SetColour(0.9, 0.8, 0.6, 1)  -- Bright warm color for better visibility
     -- Text Editor
     self.editor = self.root:AddChild(TextEdit(DEFAULTFONT, 25))
     self.editor:SetPosition(0, 0)
@@ -184,9 +199,22 @@ function NotepadWidget:OnBecomeActive()
         self.click_handler = TheInput:AddMouseButtonHandler(function(button, down, x, y)
             if button == MOUSEBUTTON_LEFT and down then
                 -- Check if click is outside the notepad bounds
-                if self:IsOpen() and not self:IsMouseInWidget(x, y) then
-                    self:Close()
-                    return true
+                if self:IsOpen() then
+                    -- Don't close if clicking on title bar
+                    local title_pos = self.title:GetWorldPosition()
+                    local title_w, title_h = self.title:GetRegionSize()
+                    local in_title = math.abs(y - title_pos.y) <= title_h/2
+                    
+                    -- Don't close if clicking close button
+                    local close_pos = self.close_btn:GetWorldPosition()
+                    local close_w, close_h = self.close_btn:GetSize()
+                    local in_close = math.abs(x - close_pos.x) <= close_w/2 and math.abs(y - close_pos.y) <= close_h/2
+                    
+                    -- Only close if click is outside and not on title/close
+                    if not self:IsMouseInWidget(x, y) and not in_title and not in_close then
+                        self:Close()
+                        return true
+                    end
                 end
             end
             return false
@@ -314,16 +342,27 @@ end
 function NotepadWidget:IsMouseInWidget(x, y)
     if not self.bg then return false end
     
+    -- Check title bar area
+    local title_pos = self.title:GetWorldPosition()
+    local title_w, title_h = self.title:GetRegionSize()
+    local in_title = math.abs(y - title_pos.y) <= title_h/2
+    
+    -- Check close button area
+    local close_pos = self.close_btn:GetWorldPosition()
+    local close_w, close_h = self.close_btn:GetSize()
+    local in_close = math.abs(x - close_pos.x) <= close_w/2 and math.abs(y - close_pos.y) <= close_h/2
+    
+    -- Check main notepad area
     local pos = self.root:GetPosition()
     local size = {self.bg:GetSize()}
-    
-    -- Calculate bounds
     local left = pos.x - size[1]/2
     local right = pos.x + size[1]/2
     local bottom = pos.y - size[2]/2
     local top = pos.y + size[2]/2
+    local in_notepad = x >= left and x <= right and y >= bottom and y <= top
     
-    return x >= left and x <= right and y >= bottom and y <= top
+    -- Return true if in any of the widget areas
+    return in_title or in_close or in_notepad
 end
 
 function NotepadWidget:IsOpen()
