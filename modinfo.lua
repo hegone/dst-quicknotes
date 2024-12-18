@@ -11,6 +11,8 @@ all_clients_require_mod = false
 client_only_mod = true
 
 -- Mod icon (removed to resolve warning)
+modicon = "modicon.tex"
+icon_atlas = "modicon.xml"
 
 -- Configuration options
 configuration_options = {

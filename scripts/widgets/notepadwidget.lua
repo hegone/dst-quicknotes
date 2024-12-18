@@ -30,20 +30,26 @@ local NotepadWidget = Class(Screen, function(self)
     self.root:SetScaleMode(SCALEMODE_PROPORTIONAL)
     self.root:SetPosition(0, 0)
     
-    -- Background
-    self.bg = self.root:AddChild(Image("images/ui.xml", "black.tex"))
-    self.bg:SetTint(0, 0, 0, 0.8)
-    self.bg:SetSize(500, 400)
+    -- Background shadow
+    self.bg_shadow = self.root:AddChild(Image("images/hud.xml", "craft_slot.tex"))
+    self.bg_shadow:SetSize(520, 420)
+    self.bg_shadow:SetPosition(5, -5)
+    self.bg_shadow:SetTint(0, 0, 0, 0.5)
     
-    -- Frame
-    self.frame = self.root:AddChild(Image("images/global.xml", "square.tex"))
+    -- Main wooden background
+    self.bg = self.root:AddChild(Image("images/hud.xml", "craft_slot.tex"))
+    self.bg:SetSize(500, 400)
+    self.bg:SetTint(0.7, 0.7, 0.7, 1)
+    
+    -- Frame overlay for worn effect
+    self.frame = self.root:AddChild(Image("images/hud.xml", "craft_slot.tex"))
     self.frame:SetSize(500, 400)
-    self.frame:SetTint(0.3, 0.3, 0.3, 1)
+    self.frame:SetTint(0.4, 0.4, 0.4, 0.3)
     
     -- Title
     self.title = self.root:AddChild(Text(TITLEFONT, 30, "Quick Notes"))
     self.title:SetPosition(0, 160)
-    self.title:SetColour(1, 1, 1, 1)
+    self.title:SetColour(0.9, 0.8, 0.6, 1)  -- Warmer color for wooden theme
     
     -- Text Editor
     -- Text Editor
