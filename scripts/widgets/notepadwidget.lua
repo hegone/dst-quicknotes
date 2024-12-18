@@ -58,21 +58,34 @@ local NotepadWidget = Class(Screen, function(self)
     self.editor:SetHAlign(ANCHOR_LEFT)
     self.editor:SetVAlign(ANCHOR_TOP)
     self.editor:EnableScrollEditWindow(true)
+    self.editor:EnableWordWrap(true)
     self.editor:SetTextLengthLimit(10000)
     self.editor:SetColour(1, 1, 1, 1)
     self.editor:SetString("")
+    self.editor.allow_newline = true
     
+    -- Handle Enter key for line breaks
+    function self.editor:OnRawKey(key, down)
+        if down and (key == KEY_ENTER or key == KEY_KP_ENTER) then
+            local text = self:GetString()
+            self:SetString(text .. "\n")
+            self:SetEditing(true)
+            return true
+        end
+        return TextEdit.OnRawKey(self, key, down)
+    end
+
     -- Setup focus handlers
     function self.editor:OnGainFocus()
         TextEdit.OnGainFocus(self)
-        self:SetColour(1, 1, 1, 1) -- ensures text stays white on focus
+        self:SetEditing(true)
+        self:SetColour(1, 1, 1, 1)
     end
     
     function self.editor:OnLoseFocus()
         TextEdit.OnLoseFocus(self)
-        self:SetColour(1, 1, 1, 1) -- ensures text remains white when not focused
+        self:SetColour(1, 1, 1, 1)
     end
-    
     -- Save indicator
     self.save_indicator = self.root:AddChild(Text(DEFAULTFONT, 20, ""))
     self.save_indicator:SetPosition(0, -170)
