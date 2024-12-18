@@ -1,6 +1,6 @@
 local Screen = require "widgets/screen"
 local Widget = require "widgets/widget"
-local TextEdit = require "widgets/textedit"
+local CustomTextEditor = require "widgets/texteditor"
 local Image = require "widgets/image"
 local ImageButton = require "widgets/imagebutton"
 local Text = require "widgets/text"
@@ -46,27 +46,9 @@ local NotepadWidget = Class(Screen, function(self)
     self.title:SetColour(1, 1, 1, 1)
     
     -- Text Editor
-    self.editor = self.root:AddChild(TextEdit(DEFAULTFONT, 25))
+    -- Text Editor
+    self.editor = self.root:AddChild(CustomTextEditor(450))  -- Width of 450 to match previous size
     self.editor:SetPosition(0, 0)
-    self.editor:SetRegionSize(450, 300)
-    self.editor:SetHAlign(ANCHOR_LEFT)
-    self.editor:SetVAlign(ANCHOR_TOP)
-    self.editor:EnableScrollEditWindow(true)
-    self.editor:SetTextLengthLimit(10000)
-    self.editor:SetColour(1, 1, 1, 1)
-    self.editor:SetString("")
-    
-    -- Setup focus handlers
-    function self.editor:OnGainFocus()
-        TextEdit.OnGainFocus(self)
-        self:SetColour(1, 1, 1, 1) -- ensures text stays white on focus
-    end
-    
-    function self.editor:OnLoseFocus()
-        TextEdit.OnLoseFocus(self)
-        self:SetColour(1, 1, 1, 1) -- ensures text remains white when not focused
-    end
-    
     -- Save indicator
     self.save_indicator = self.root:AddChild(Text(DEFAULTFONT, 20, ""))
     self.save_indicator:SetPosition(0, -170)
@@ -150,6 +132,9 @@ function NotepadWidget:OnBecomeActive()
     self:Show()
     self.isOpen = true
     self.root:ScaleTo(0, 1, .2)
+    
+    -- Ensure key events reach the editor first
+    self:SetPassControlToScreen(false)
     
     -- Cancel any existing focus task
     if self.focus_task then
