@@ -5,41 +5,61 @@
 
 **Mod Description (Steam Workshop Prompt):**  
 
-🎒 **Tired of forgetting important things while exploring the Constant?**  
+🎒 **Need a place to jot down important things while exploring the Constant?**  
 📓 Introducing **QuickNotes** – your in-game notepad designed to make survival smarter and more organized!
 
 ---
 
 ### **Features** 🚀  
-- **Toggle On/Off with One Key**  
-   Press **N** (customizable) to quickly show or hide your personal notepad without breaking immersion.  
+- **Quick Toggle with 'N' Key**  
+   Press **N** (customizable)to instantly show or hide your personal notepad.
 
-- **Jot Down Important Notes** ✍️  
-   - Write down reminders, base coordinates, crafting recipes, or survival plans.  
-   - Perfect for solo and multiplayer sessions!  
+- **Smart UI Interaction** 🖱️
+   - Click outside to close the notepad
+   - Draggable window (grab the title bar)
+   - Auto-saves your notes every 30 seconds
 
-- **Expandable & Collapsible UI** 📐  
-   - A clean, minimalistic notepad that appears only when you need it.  
-   - Adjustable size for maximum visibility and convenience.
+- **Full Text Editor** ✍️
+   - Write down anything you need to remember
+   - Support for multiple lines using Enter key
+   - Scroll for longer notes
+   - Word wrap for better readability
 
-- **Customizable Keybinding** ⌨️  
-   Want to use another key? No problem! Set your preferred toggle key in the mod settings.  
+- **Persistent Storage** 💾
+   - Your notes are automatically saved
+   - Notes persist between game sessions
+   - Never lose important information
+
+- **Clean Design** 🎨
+   - Wooden-themed UI that fits DST's style
+   - Clear, readable text
+   - Unobtrusive when not in use
 
 ---
 
-🌟 **Why Use QuickNotes?**  
-- Stay organized during boss fights, seasons, or large expeditions.  
-- No more juggling external note apps or sticky notes.  
-- Enhances gameplay without adding unfair advantages.  
+🌟 **Perfect For:**
+- Recording base coordinates
+- Keeping track of resources
+- Planning builds and expeditions
+- Organizing team strategies in multiplayer
+- Making to-do lists for your survival goals
 
 ---
 
-🛠️ **Compatibility:**  
-- Works seamlessly with **Don't Starve Together**.  
-- Compatible with most other UI mods.
+🛠️ **Technical Details:**
+- Lightweight implementation
+- Efficient auto-save system
+- Clean memory management
+- Compatible with Don't Starve Together
+- Works alongside other UI mods
 
-🧡 **Lightweight & Easy to Use!**  
-Install now and give your survival strategy a boost with QuickNotes!  
+---
+
+💡 **Tips:**
+- Drag from the title bar to reposition
+- Click outside or press ESC to close
+- Use Ctrl+S for manual save
+- Notes are saved automatically every 30 seconds
 
 ---
 

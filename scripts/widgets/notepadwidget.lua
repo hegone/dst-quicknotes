@@ -11,6 +11,15 @@ local NotepadWidget = Class(Screen, function(self)
     Screen._ctor(self, "NotepadWidget")
     print("Creating NotepadWidget")
 
+    -- Initialize as non-modal screen
+    self.black = self:AddChild(Image("images/global.xml", "square.tex"))
+    self.black:SetVRegPoint(ANCHOR_MIDDLE)
+    self.black:SetHRegPoint(ANCHOR_MIDDLE)
+    self.black:SetVAnchor(ANCHOR_MIDDLE)
+    self.black:SetHAnchor(ANCHOR_MIDDLE)
+    self.black:SetScaleMode(SCALEMODE_FILLSCREEN)
+    self.black:SetTint(0, 0, 0, 0) -- Transparent background to allow clicks through
+    
     self.isOpen = false
     -- Dragging state
     self.dragging = false
@@ -170,6 +179,20 @@ function NotepadWidget:OnBecomeActive()
     self.isOpen = true
     self.root:ScaleTo(0, 1, .2)
     
+    -- Add click handler when becoming active
+    if not self.click_handler then
+        self.click_handler = TheInput:AddMouseButtonHandler(function(button, down, x, y)
+            if button == MOUSEBUTTON_LEFT and down then
+                -- Check if click is outside the notepad bounds
+                if self:IsOpen() and not self:IsMouseInWidget(x, y) then
+                    self:Close()
+                    return true
+                end
+            end
+            return false
+        end)
+    end
+    
     -- Cancel any existing focus task
     if self.focus_task then
         self.focus_task:Cancel()
@@ -190,6 +213,13 @@ end
 function NotepadWidget:OnBecomeInactive()
     print("NotepadWidget becoming inactive")
     NotepadWidget._base.OnBecomeInactive(self)
+    
+    -- Remove click handler when becoming inactive
+    if self.click_handler then
+        self.click_handler:Remove()
+        self.click_handler = nil
+    end
+    
     self:Hide()
     self.isOpen = false
     self:StopAutoSave()
@@ -281,7 +311,32 @@ function NotepadWidget:OnControl(control, down)
     return false
 end
 
+function NotepadWidget:IsMouseInWidget(x, y)
+    if not self.bg then return false end
+    
+    local pos = self.root:GetPosition()
+    local size = {self.bg:GetSize()}
+    
+    -- Calculate bounds
+    local left = pos.x - size[1]/2
+    local right = pos.x + size[1]/2
+    local bottom = pos.y - size[2]/2
+    local top = pos.y + size[2]/2
+    
+    return x >= left and x <= right and y >= bottom and y <= top
+end
+
+function NotepadWidget:IsOpen()
+    return self.isOpen
+end
+
 function NotepadWidget:OnDestroy()
+    -- Remove click handler on destroy
+    if self.click_handler then
+        self.click_handler:Remove()
+        self.click_handler = nil
+    end
+    
     self:StopAutoSave()
     
     if self.save_timer then
