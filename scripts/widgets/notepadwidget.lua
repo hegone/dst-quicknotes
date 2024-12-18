@@ -1,6 +1,6 @@
 local Screen = require "widgets/screen"
 local Widget = require "widgets/widget"
-local CustomTextEditor = require "widgets/texteditor"
+local TextEdit = require "widgets/textedit"
 local Image = require "widgets/image"
 local ImageButton = require "widgets/imagebutton"
 local Text = require "widgets/text"
@@ -52,8 +52,7 @@ local NotepadWidget = Class(Screen, function(self)
     self.title:SetColour(0.9, 0.8, 0.6, 1)  -- Warmer color for wooden theme
     
     -- Text Editor
-    -- Text Editor
-    self.editor = self.root:AddChild(CustomTextEditor(450))  -- Width of 450 to match previous size
+    self.editor = self.root:AddChild(TextEdit(DEFAULTFONT, 25))
     self.editor:SetPosition(0, 0)
     self.editor:SetRegionSize(450, 300)
     self.editor:SetHAlign(ANCHOR_LEFT)
@@ -170,9 +169,6 @@ function NotepadWidget:OnBecomeActive()
     self:Show()
     self.isOpen = true
     self.root:ScaleTo(0, 1, .2)
-    
-    -- Ensure key events reach the editor first
-    self:SetPassControlToScreen(false)
     
     -- Cancel any existing focus task
     if self.focus_task then
