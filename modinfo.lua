@@ -16,7 +16,7 @@ Keyboard Shortcuts:
 - Enter for new lines]]
 
 author = "Lumen"
-version = "1.0.0"
+version = "0.1.1"
 
 -- DST compatibility
 dst_compatible = true
