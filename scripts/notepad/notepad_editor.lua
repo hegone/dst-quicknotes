@@ -70,7 +70,9 @@ function NotepadEditor:InitializeEditor()
     
     -- Set up raw key handler for enter key and future key commands
     function editor:OnRawKey(key, down)
-        if self.parent:HandleKeyCommand(key, down) then
+        -- Get the editor instance from parent's reference
+        local editor_instance = self.parent.parent.editor
+        if editor_instance and editor_instance:HandleKeyCommand(key, down) then
             return true
         end
         return TextEdit.OnRawKey(self, key, down)

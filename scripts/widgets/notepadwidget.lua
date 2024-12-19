@@ -382,12 +382,6 @@ end
 ]]
 function NotepadWidget:OnControl(control, down)
     if NotepadWidget._base.OnControl(self, control, down) then return true end
-    
-    if self.draggable:IsDragging() then
-        self.draggable:StopDragging()
-        return true
-    end
-    
     return self.input_handler:OnControl(control, down)
 end
 
