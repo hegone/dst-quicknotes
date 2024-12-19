@@ -1,37 +1,93 @@
+--[[
+    Notepad Widget Module for DST Quick Notes
+    
+    This is the main widget module that creates and manages the notepad UI.
+    It handles the overall layout, appearance, and behavior of the notepad,
+    including:
+    - Creating and positioning UI elements (frame, title, editor, etc.)
+    - Managing widget lifecycle (show/hide, focus, destruction)
+    - Coordinating with other modules (data, input, editor)
+    - Auto-saving and manual saving of notes
+    - Drag and drop functionality
+    
+    The widget uses DST's screen system and follows the game's UI styling
+    to maintain a consistent look and feel.
+
+    Usage:
+        local NotepadWidget = require("widgets/notepadwidget")
+        local notepad = NotepadWidget()
+        notepad:OnBecomeActive()  -- Show the notepad
+]]
+
 local Screen = require "widgets/screen"
 local Widget = require "widgets/widget"
-local TextEdit = require "widgets/textedit"
 local Image = require "widgets/image"
 local ImageButton = require "widgets/imagebutton"
 local Text = require "widgets/text"
 local Button = require "widgets/button"
 local TEMPLATES = require "widgets/templates"
+local DataManager = require "notepad/data_manager"
+local InputHandler = require "notepad/input_handler"
+local Config = require "notepad/config"
+local DraggableWidget = require "notepad/draggable_widget"
+local NotepadEditor = require "notepad/notepad_editor"
 
+--[[
+    NotepadWidget Class
+    
+    Main widget class that extends Screen to create a floating notepad interface.
+    Manages the visual layout, user interaction, and data persistence of notes.
+]]
 local NotepadWidget = Class(Screen, function(self)
     Screen._ctor(self, "NotepadWidget")
-    print("Creating NotepadWidget")
+    print("[Quick Notes] Creating NotepadWidget")
+    
+    -- Initialize core components
+    self.data_manager = DataManager()
+    self.isOpen = false
+    
+    -- Initialize timers
+    self.save_timer = nil          -- Controls save indicator visibility
+    self.auto_save_timer = nil     -- Handles periodic auto-saving
+    self.focus_task = nil          -- Manages focus delay on open
+    
+    -- Initialize input handling
+    self.input_handler = InputHandler(self)
+    
+    -- Set up non-modal screen background
+    self:InitializeBackground()
+    
+    -- Create and configure root widget
+    self:InitializeRootWidget()
+    
+    -- Set up UI components
+    self:InitializeUIComponents()
+    
+    -- Set default focus and load saved notes
+    self.default_focus = self.editor
+    self:LoadNotes()
+    
+    print("[Quick Notes] NotepadWidget created successfully")
+    self:Hide()
+end)
 
-    -- Initialize as non-modal screen
+--[[
+    Initializes the transparent background that allows clicking through.
+]]
+function NotepadWidget:InitializeBackground()
     self.black = self:AddChild(Image("images/global.xml", "square.tex"))
     self.black:SetVRegPoint(ANCHOR_MIDDLE)
     self.black:SetHRegPoint(ANCHOR_MIDDLE)
     self.black:SetVAnchor(ANCHOR_MIDDLE)
     self.black:SetHAnchor(ANCHOR_MIDDLE)
     self.black:SetScaleMode(SCALEMODE_FILLSCREEN)
-    self.black:SetTint(0, 0, 0, 0) -- Transparent background to allow clicks through
-    
-    self.isOpen = false
-    -- Dragging state
-    self.dragging = false
-    self.drag_start_x = 0
-    self.drag_start_y = 0
-    self.widget_start_x = 0
-    self.widget_start_y = 0
-    -- Initialize timers (using existing UI inst from Screen)
-    self.save_timer = nil
-    self.auto_save_timer = nil
-    self.focus_task = nil
-    
+    self.black:SetTint(0, 0, 0, 0)  -- Transparent background
+end
+
+--[[
+    Creates and configures the root widget and its visual components.
+]]
+function NotepadWidget:InitializeRootWidget()
     -- Create root widget
     self.root = self:AddChild(Widget("ROOT"))
     self.root:SetVAnchor(ANCHOR_MIDDLE)
@@ -39,16 +95,49 @@ local NotepadWidget = Class(Screen, function(self)
     self.root:SetScaleMode(SCALEMODE_PROPORTIONAL)
     self.root:SetPosition(0, 0)
     
-    -- Subtle shadow for depth
+    -- Add shadow for depth
     self.bg_shadow = self.root:AddChild(Image("images/global_redux.xml", "item_frame_shadow.tex"))
-    self.bg_shadow:SetSize(520, 420)
+    self.bg_shadow:SetSize(Config.DIMENSIONS.SHADOW.WIDTH, Config.DIMENSIONS.SHADOW.HEIGHT)
     self.bg_shadow:SetPosition(5, -5)
-    self.bg_shadow:SetTint(0, 0, 0, 0.3)
+    self.bg_shadow:SetTint(
+        Config.COLORS.SHADOW_TINT.r,
+        Config.COLORS.SHADOW_TINT.g,
+        Config.COLORS.SHADOW_TINT.b,
+        Config.COLORS.SHADOW_TINT.a
+    )
+end
+
+--[[
+    Initializes all UI components including background, frame, title,
+    editor, and save indicator.
+]]
+function NotepadWidget:InitializeUIComponents()
+    -- Set up clickable background
+    self:InitializeClickableBackground()
     
-    -- Transparent background with click handling
+    -- Add decorative frame
+    self:InitializeFrame()
+    
+    -- Add title bar and text
+    self:InitializeTitleBar()
+    
+    -- Initialize text editor
+    self.editor = NotepadEditor(self.root, DEFAULTFONT, Config.FONT_SIZES.EDITOR)
+    
+    -- Add save indicator
+    self:InitializeSaveIndicator()
+    
+    -- Add close button
+    self:InitializeCloseButton()
+end
+
+--[[
+    Creates the clickable background that handles focus.
+]]
+function NotepadWidget:InitializeClickableBackground()
     self.bg = self.root:AddChild(Image("images/global_redux.xml", "menu_scrollingframe.tex"))
-    self.bg:SetSize(500, 400)
-    self.bg:SetTint(1, 1, 1, 0)  -- Fully transparent
+    self.bg:SetSize(Config.DIMENSIONS.BACKGROUND.WIDTH, Config.DIMENSIONS.BACKGROUND.HEIGHT)
+    self.bg:SetTint(1, 1, 1, 0)  -- Transparent
     self.bg:SetClickable(true)
     self.bg.OnMouseButton = function(_, button, down, x, y)
         if button == MOUSEBUTTON_LEFT and down then
@@ -59,217 +148,161 @@ local NotepadWidget = Class(Screen, function(self)
         end
         return false
     end
-    
-    -- Frame overlay for wooden texture
-    -- Wooden frame with adjusted opacity
-    self.frame = self.root:AddChild(Image("images/global_redux.xml", "menu_woodframe.tex"))
-    self.frame:SetSize(510, 410)
-    self.frame:SetTint(0.9, 0.8, 0.7, 0.8)  -- Slightly transparent warm wood color
-    
-    -- Title with subtle wooden header
-    self.title_bg = self.root:AddChild(Image("images/global_redux.xml", "menu_header.tex"))
-    self.title_bg:SetSize(510, 45)
-    self.title_bg:SetPosition(0, 160)
-    self.title_bg:SetTint(0.8, 0.7, 0.6, 0.9)  -- Semi-transparent warm wood
-    
-    self.title = self.root:AddChild(Text(HEADERFONT, 30, "Quick Notes"))
-    self.title:SetPosition(0, 160)
-    self.title:SetColour(0.9, 0.8, 0.6, 1)  -- Bright warm color for better visibility
-    -- Text Editor
-    self.editor = self.root:AddChild(TextEdit(DEFAULTFONT, 25))
-    self.editor:SetPosition(0, 0)
-    self.editor:SetRegionSize(450, 300)
-    self.editor:SetHAlign(ANCHOR_LEFT)
-    self.editor:SetVAlign(ANCHOR_TOP)
-    self.editor:EnableScrollEditWindow(true)
-    self.editor:EnableWordWrap(true)
-    self.editor:SetTextLengthLimit(10000)
-    self.editor:SetColour(1, 1, 1, 1)
-    self.editor:SetString("")
-    self.editor.allow_newline = true
-    
-    -- Handle Enter key for line breaks
-    function self.editor:OnRawKey(key, down)
-        if down and (key == KEY_ENTER or key == KEY_KP_ENTER) then
-            local text = self:GetString()
-            self:SetString(text .. "\n")
-            self:SetEditing(true)
-            return true
-        end
-        return TextEdit.OnRawKey(self, key, down)
-    end
+end
 
-    -- Setup focus handlers
-    function self.editor:OnGainFocus()
-        TextEdit.OnGainFocus(self)
-        self:SetEditing(true)
-        self:SetColour(1, 1, 1, 1)
-    end
+--[[
+    Creates the decorative frame around the notepad.
+]]
+function NotepadWidget:InitializeFrame()
+    self.frame = self.root:AddChild(Image("images/global_redux.xml", "menu_woodframe.tex"))
+    self.frame:SetSize(Config.DIMENSIONS.FRAME.WIDTH, Config.DIMENSIONS.FRAME.HEIGHT)
+    self.frame:SetTint(
+        Config.COLORS.FRAME_TINT.r,
+        Config.COLORS.FRAME_TINT.g,
+        Config.COLORS.FRAME_TINT.b,
+        Config.COLORS.FRAME_TINT.a
+    )
+end
+
+--[[
+    Creates the title bar with background and text.
+]]
+function NotepadWidget:InitializeTitleBar()
+    -- Title background
+    self.title_bg = self.root:AddChild(Image("images/global_redux.xml", "menu_header.tex"))
+    self.title_bg:SetSize(Config.DIMENSIONS.TITLE_BAR.WIDTH, Config.DIMENSIONS.TITLE_BAR.HEIGHT)
+    self.title_bg:SetPosition(0, 160)
+    self.title_bg:SetTint(
+        Config.COLORS.TITLE_BG_TINT.r,
+        Config.COLORS.TITLE_BG_TINT.g,
+        Config.COLORS.TITLE_BG_TINT.b,
+        Config.COLORS.TITLE_BG_TINT.a
+    )
     
-    function self.editor:OnLoseFocus()
-        TextEdit.OnLoseFocus(self)
-        self:SetColour(1, 1, 1, 1)
-    end
-    -- Save indicator
-    self.save_indicator = self.root:AddChild(Text(DEFAULTFONT, 20, ""))
+    -- Title text
+    self.title = self.root:AddChild(Text(HEADERFONT, Config.FONT_SIZES.TITLE, "Quick Notes"))
+    self.title:SetPosition(0, 160)
+    self.title:SetColour(
+        Config.COLORS.TITLE_TEXT.r,
+        Config.COLORS.TITLE_TEXT.g,
+        Config.COLORS.TITLE_TEXT.b,
+        Config.COLORS.TITLE_TEXT.a
+    )
+    self.title:SetClickable(true)  -- Enable dragging
+end
+
+--[[
+    Creates the save indicator text.
+]]
+function NotepadWidget:InitializeSaveIndicator()
+    self.save_indicator = self.root:AddChild(Text(DEFAULTFONT, Config.FONT_SIZES.SAVE_INDICATOR, ""))
     self.save_indicator:SetPosition(0, -170)
-    self.save_indicator:SetColour(0.5, 1, 0.5, 1)
-    
-    -- Close button
+    self.save_indicator:SetColour(
+        Config.COLORS.SAVE_INDICATOR.r,
+        Config.COLORS.SAVE_INDICATOR.g,
+        Config.COLORS.SAVE_INDICATOR.b,
+        Config.COLORS.SAVE_INDICATOR.a
+    )
+end
+
+--[[
+    Creates the close button.
+]]
+function NotepadWidget:InitializeCloseButton()
     self.close_btn = self.root:AddChild(ImageButton("images/global_redux.xml", "close.tex"))
     self.close_btn:SetPosition(230, 170)
     self.close_btn:SetScale(0.7)
     self.close_btn:SetOnClick(function() self:Close() end)
-    
-    -- Set default focus handler
-    self.default_focus = self.editor
-    
-    -- Setup keyboard handlers
-    self:SetupKeyboardHandlers()
-    -- Load saved notes
-    self:LoadNotes()
-    print("NotepadWidget created successfully")
-    self:Hide()
-
-    -- Make title bar draggable
-    self.title:SetClickable(true)
-end)
-
-function NotepadWidget:OnUpdate()
-    if self.dragging and TheInput:IsMouseDown(MOUSEBUTTON_LEFT) then
-        local mousepos = TheInput:GetScreenPosition()
-        local dx = mousepos.x - self.drag_start_x
-        local dy = mousepos.y - self.drag_start_y
-        self.root:SetPosition(self.widget_start_x + dx, self.widget_start_y + dy)
-    else
-        self.dragging = false
-    end
 end
 
+--[[
+    Updates widget state, primarily handling dragging.
+]]
+function NotepadWidget:OnUpdate()
+    self.input_handler:UpdateDragging(self.root)
+end
+
+--[[
+    Handles mouse button events.
+    
+    @param button (number) The mouse button being pressed
+    @param down (boolean) Whether the button is being pressed down
+    @param x (number) Mouse X position
+    @param y (number) Mouse Y position
+    @return (boolean) True if the input was handled
+]]
 function NotepadWidget:OnMouseButton(button, down, x, y)
-    if button == MOUSEBUTTON_LEFT then
-        if down then
-            -- Only start dragging if clicking on the title
-            local title_pos = self.title:GetWorldPosition()
-            local title_w, title_h = self.title:GetRegionSize()
-            if math.abs(y - title_pos.y) <= title_h/2 then
-                self.dragging = true
-                local mousepos = TheInput:GetScreenPosition()
-                self.drag_start_x = mousepos.x
-                self.drag_start_y = mousepos.y
-                local pos = self.root:GetPosition()
-                self.widget_start_x = pos.x
-                self.widget_start_y = pos.y
-                return true
-            end
-        else
-            self.dragging = false
-        end
+    if self.input_handler:OnMouseButton(button, down, x, y) then
+        return true
     end
     return NotepadWidget._base.OnMouseButton(self, button, down, x, y)
 end
 
-function NotepadWidget:SetupKeyboardHandlers()
-    self.keyboard_handlers = {
-        -- Ctrl+S to save
-        [CONTROL_ACCEPT] = function()
-            if TheInput:IsKeyDown(KEY_CTRL) then
-                self:SaveNotes()
-                return true
-            end
-        end,
-        -- Escape to close
-        [CONTROL_CANCEL] = function()
-            self:Close()
-            return true
-        end
-    }
-end
-
+--[[
+    Called when the widget becomes active.
+    Handles showing the widget and setting up timers.
+]]
 function NotepadWidget:OnBecomeActive()
-    print("NotepadWidget becoming active")
+    print("[Quick Notes] NotepadWidget becoming active")
     NotepadWidget._base.OnBecomeActive(self)
     
     self:Show()
     self.isOpen = true
-    self.root:ScaleTo(0, 1, .2)
+    self.root:ScaleTo(0, 1, Config.SETTINGS.OPEN_ANIMATION_DURATION)
     
-    -- Add click handler when becoming active
-    if not self.click_handler then
-        self.click_handler = TheInput:AddMouseButtonHandler(function(button, down, x, y)
-            if button == MOUSEBUTTON_LEFT and down then
-                -- Check if click is outside the notepad bounds
-                if self:IsOpen() then
-                    -- Don't close if clicking on title bar
-                    local title_pos = self.title:GetWorldPosition()
-                    local title_w, title_h = self.title:GetRegionSize()
-                    local in_title = math.abs(y - title_pos.y) <= title_h/2
-                    
-                    -- Don't close if clicking close button
-                    local close_pos = self.close_btn:GetWorldPosition()
-                    local close_w, close_h = self.close_btn:GetSize()
-                    local in_close = math.abs(x - close_pos.x) <= close_w/2 and math.abs(y - close_pos.y) <= close_h/2
-                    
-                    -- Only close if click is outside and not on title/close
-                    if not self:IsMouseInWidget(x, y) and not in_title and not in_close then
-                        self:Close()
-                        return true
-                    end
-                end
-            end
-            return false
-        end)
-    end
+    self.input_handler:AddClickHandler()
     
-    -- Cancel any existing focus task
+    -- Handle focus timing
     if self.focus_task then
         self.focus_task:Cancel()
         self.focus_task = nil
     end
     
-    -- Set focus to the editor after a short delay
-    self.focus_task = self.inst:DoTaskInTime(0.1, function()
+    self.focus_task = self.inst:DoTaskInTime(Config.SETTINGS.FOCUS_DELAY, function()
         if self.editor then
             self.editor:SetFocus()
-            -- Start auto-save timer
             self:StartAutoSave()
         end
         self.focus_task = nil
     end)
 end
 
+--[[
+    Called when the widget becomes inactive.
+    Handles cleanup and saving.
+]]
 function NotepadWidget:OnBecomeInactive()
-    print("NotepadWidget becoming inactive")
+    print("[Quick Notes] NotepadWidget becoming inactive")
     NotepadWidget._base.OnBecomeInactive(self)
     
-    -- Remove click handler when becoming inactive
-    if self.click_handler then
-        self.click_handler:Remove()
-        self.click_handler = nil
-    end
+    self.input_handler:RemoveClickHandler()
     
     self:Hide()
     self.isOpen = false
     self:StopAutoSave()
-    self:SaveNotes() -- Save on close
+    self:SaveNotes()  -- Save on close
     
-    -- Cancel focus task if it exists
     if self.focus_task then
         self.focus_task:Cancel()
         self.focus_task = nil
     end
 end
 
+--[[
+    Starts the auto-save timer.
+]]
 function NotepadWidget:StartAutoSave()
-    self:StopAutoSave() -- Clean up any existing timer
-    -- Auto-save every 30 seconds
-    self.auto_save_timer = self.inst:DoPeriodicTask(30, function() 
-        if self.editor and self.editor:GetString() then
+    self:StopAutoSave()  -- Clean up any existing timer
+    self.auto_save_timer = self.inst:DoPeriodicTask(Config.SETTINGS.AUTO_SAVE_INTERVAL, function()
+        if self.editor and self.editor:GetText() then
             self:SaveNotes()
         end
     end)
 end
 
+--[[
+    Stops the auto-save timer.
+]]
 function NotepadWidget:StopAutoSave()
     if self.auto_save_timer then
         self.auto_save_timer:Cancel()
@@ -277,8 +310,11 @@ function NotepadWidget:StopAutoSave()
     end
 end
 
+--[[
+    Closes the notepad widget.
+]]
 function NotepadWidget:Close()
-    print("NotepadWidget closing")
+    print("[Quick Notes] NotepadWidget closing")
     self:SaveNotes()
     self.isOpen = false
     if _G.TheFrontEnd:GetActiveScreen() == self then
@@ -286,29 +322,35 @@ function NotepadWidget:Close()
     end
 end
 
+--[[
+    Saves the current notes content.
+]]
 function NotepadWidget:SaveNotes()
     if not self.editor then return end
-    local content = self.editor:GetString()
+    local content = self.editor:GetText()
     if not content then return end
     
-    TheSim:SetPersistentString("quicknotes", content, false)
-    self:ShowSaveIndicator("Saved!")
+    if self.data_manager:SaveNotes(content) then
+        self:ShowSaveIndicator("Saved!")
+    end
 end
 
+--[[
+    Shows the save indicator with a message.
+    
+    @param message (string) Message to display (optional)
+]]
 function NotepadWidget:ShowSaveIndicator(message)
     if not self.save_indicator then return end
     
-    -- Show save indicator briefly
     self.save_indicator:SetString(message or "")
     
-    -- Cancel existing timer if any
     if self.save_timer then
         self.save_timer:Cancel()
         self.save_timer = nil
     end
     
-    -- Create new timer
-    self.save_timer = self.inst:DoTaskInTime(1, function() 
+    self.save_timer = self.inst:DoTaskInTime(Config.SETTINGS.SAVE_INDICATOR_DURATION, function()
         if self.save_indicator then
             self.save_indicator:SetString("")
         end
@@ -316,29 +358,46 @@ function NotepadWidget:ShowSaveIndicator(message)
     end)
 end
 
+--[[
+    Loads saved notes from persistent storage.
+]]
 function NotepadWidget:LoadNotes()
-    TheSim:GetPersistentString("quicknotes", function(success, content)
-        if success and content and self.editor then
-            self.editor:SetString(content)
+    self.data_manager:LoadNotes(function(success, content)
+        if success and self.editor then
+            self.editor:SetText(content)
         else
-            print("Failed to load notes or no saved notes found")
             if self.editor then
-                self.editor:SetString("")
+                self.editor:SetText("")
             end
         end
     end)
 end
 
+--[[
+    Handles keyboard control events.
+    
+    @param control (number) The control code
+    @param down (boolean) Whether the key is being pressed down
+    @return (boolean) True if the input was handled
+]]
 function NotepadWidget:OnControl(control, down)
     if NotepadWidget._base.OnControl(self, control, down) then return true end
     
-    if down and self.keyboard_handlers[control] then
-        return self.keyboard_handlers[control]()
+    if self.draggable:IsDragging() then
+        self.draggable:StopDragging()
+        return true
     end
     
-    return false
+    return self.input_handler:OnControl(control, down)
 end
 
+--[[
+    Checks if a point is within the widget's bounds.
+    
+    @param x (number) X coordinate to check
+    @param y (number) Y coordinate to check
+    @return (boolean) True if the point is within the widget
+]]
 function NotepadWidget:IsMouseInWidget(x, y)
     if not self.bg then return false end
     
@@ -361,21 +420,29 @@ function NotepadWidget:IsMouseInWidget(x, y)
     local top = pos.y + size[2]/2
     local in_notepad = x >= left and x <= right and y >= bottom and y <= top
     
-    -- Return true if in any of the widget areas
     return in_title or in_close or in_notepad
 end
 
+--[[
+    Checks if the notepad is currently open.
+    
+    @return (boolean) True if the notepad is open
+]]
 function NotepadWidget:IsOpen()
     return self.isOpen
 end
 
+--[[
+    Cleans up the widget and its components.
+    Called when the widget is being destroyed.
+]]
 function NotepadWidget:OnDestroy()
-    -- Remove click handler on destroy
-    if self.click_handler then
-        self.click_handler:Remove()
-        self.click_handler = nil
+    -- Remove input handler
+    if self.input_handler then
+        self.input_handler:RemoveClickHandler()
     end
     
+    -- Cancel all timers
     self:StopAutoSave()
     
     if self.save_timer then
@@ -388,8 +455,12 @@ function NotepadWidget:OnDestroy()
         self.focus_task = nil
     end
     
+    -- Destroy UI components
     if self.save_indicator then self.save_indicator:Kill() end
-    if self.editor then self.editor:Kill() end
+    if self.editor then
+        self.editor:Kill()
+        self.editor = nil
+    end
     if self.close_btn then self.close_btn:Kill() end
     if self.title then self.title:Kill() end
     if self.frame then self.frame:Kill() end
@@ -398,4 +469,4 @@ function NotepadWidget:OnDestroy()
     NotepadWidget._base.OnDestroy(self)
 end
 
-return NotepadWidget 
+return NotepadWidget
