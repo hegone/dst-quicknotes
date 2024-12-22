@@ -93,16 +93,33 @@ function NotepadEditor:InitializeEditor()
         -- Get the editor instance from parent's reference
         local editor_instance = self.parent.parent.editor
         if editor_instance then
+            -- Debug logging for key presses
+            print("[Debug] Key pressed:", key, "Down:", down)
+            
+            -- Handle backspace explicitly
+            if key == KEY_BACKSPACE and down then
+                local current_text = self:GetString()
+                local cursor_pos = self:GetEditCursorPos()
+                if cursor_pos > 0 then
+                    -- Delete char to the left of cursor
+                    local new_text = current_text:sub(1, cursor_pos - 1) .. current_text:sub(cursor_pos + 1)
+                    self:SetString(new_text)
+                    self:SetEditCursorPos(cursor_pos - 1)
+                    editor_instance:ScrollToCursor()
+                    return true
+                end
+                return TextEdit.OnRawKey(self, key, down)
+            end
+            
             if editor_instance.text_utils:HandleEnterKey(self, key, down) then
                 editor_instance:ScrollToCursor()
                 return true
             end
-            -- Let TextEdit handle backspace and other special keys
-            if key ~= KEY_BACKSPACE then
-                if editor_instance:HandleKeyCommand(key, down) then
-                    editor_instance:ScrollToCursor()
-                    return true
-                end
+            
+            -- Handle other key commands
+            if editor_instance:HandleKeyCommand(key, down) then
+                editor_instance:ScrollToCursor()
+                return true
             end
         end
         return TextEdit.OnRawKey(self, key, down)

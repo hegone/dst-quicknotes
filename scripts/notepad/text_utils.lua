@@ -170,6 +170,22 @@ function TextUtils:HandleTextInput(editor, char, config)
         return false
     end
 
+    -- Handle alternative backspace codes
+    if char == "\8" or char == "\127" then
+        local text = editor:GetString() or ""
+        local cursor_pos = editor.GetEditCursorPos and editor:GetEditCursorPos() or #text
+        if cursor_pos > 0 then
+            local new_text = text:sub(1, cursor_pos - 1) .. text:sub(cursor_pos + 1)
+            editor:SetString(new_text)
+            editor:SetEditing(true)
+            if editor.SetEditCursorPos then
+                editor:SetEditCursorPos(cursor_pos - 1)
+            end
+            return true
+        end
+        return false
+    end
+
     local text = editor:GetString() or ""
     local cursor_pos = editor.GetEditCursorPos and editor:GetEditCursorPos() or #text
     
