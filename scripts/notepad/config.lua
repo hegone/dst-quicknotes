@@ -48,10 +48,10 @@ local DIMENSIONS = {
 -- Colors use RGBA format (red, green, blue, alpha)
 -- Values range from 0 to 1
 local COLORS = {
-    SHADOW_TINT = { r = 0, g = 0, b = 0, a = 0.3 },        -- Outer shadow color
-    FRAME_TINT = { r = 0.9, g = 0.8, b = 0.7, a = 0.8 },   -- Frame border color
-    TITLE_BG_TINT = { r = 0.8, g = 0.7, b = 0.6, a = 0.9 },-- Title bar background
-    TITLE_TEXT = { r = 0.9, g = 0.8, b = 0.6, a = 1 },     -- Title text color
+    SHADOW_TINT = { r = 0, g = 0, b = 0, a = 0.2 },        -- Outer shadow color
+    FRAME_TINT = { r = 0.1, g = 0.1, b = 0.1, a = 0.7 },   -- Frame border color
+    TITLE_BG_TINT = { r = 0.1, g = 0.1, b = 0.1, a = 0.8 },-- Title bar background
+    TITLE_TEXT = { r = 1, g = 1, b = 0.8, a = 1 },     -- Title text color
     EDITOR_TEXT = { r = 1, g = 1, b = 1, a = 1 },          -- Main editor text color
     SAVE_INDICATOR = { r = 0.5, g = 1, b = 0.5, a = 1 }    -- "Saved" indicator color
 }
@@ -62,7 +62,8 @@ local SETTINGS = {
     AUTO_SAVE_INTERVAL = 30,              -- Time between auto-saves (seconds)
     SAVE_INDICATOR_DURATION = 1,          -- How long "Saved" indicator shows (seconds)
     FOCUS_DELAY = 0.1,                    -- Delay before focusing editor (seconds)
-    OPEN_ANIMATION_DURATION = 0.2         -- Widget open animation time (seconds)
+    OPEN_ANIMATION_DURATION = 0.2,        -- Widget open animation time (seconds)
+    MAX_LINE_WIDTH = 420                  -- Maximum line width in pixels before forcing newline
 }
 
 -- Export all configuration constants
