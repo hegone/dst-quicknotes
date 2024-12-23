@@ -20,11 +20,12 @@ Features:
 Keyboard Shortcuts:
 - Press N (configurable) to toggle
 - Ctrl+S to save manually
+- Ctrl+R to reset
 - ESC to close
 - Enter for new lines]]
 
 author = "Lumen"
-version = "0.1.1"
+version = "0.2.0"
 
 --[[ Compatibility Settings
     These flags determine which game versions can use the mod:
@@ -34,6 +35,8 @@ version = "0.1.1"
     - all_clients_require_mod: Whether all players need the mod
     - client_only_mod: Whether the mod only runs on clients
 ]]
+
+api_version = 10
 dst_compatible = true
 dont_starve_compatible = false
 reign_of_giants_compatible = false

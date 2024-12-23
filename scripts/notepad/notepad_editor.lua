@@ -19,6 +19,7 @@
 
 local TextEdit = require "widgets/textedit"
 local Config = require "notepad/config"
+local TextUtils = require "notepad/text_utils"
 
 --[[
     NotepadEditor Class
@@ -35,8 +36,16 @@ local NotepadEditor = Class(function(self, parent, font, font_size)
     -- Store parent widget for adding children
     self.parent = parent
     
-    -- Initialize text editor widget with configured or default settings
-    self.editor = parent:AddChild(TextEdit(font or DEFAULTFONT, font_size or Config.FONT_SIZES.EDITOR))
+    -- Initialize text utilities
+    self.text_utils = TextUtils()
+    
+    -- Create the editor widget
+    self.editor = self.parent:AddChild(TextEdit(font or DEFAULTFONT, font_size or Config.FONT_SIZES.EDITOR))
+    
+    -- Store font settings for text measurement
+    self.editor.font = font or DEFAULTFONT
+    self.editor.size = font_size or Config.FONT_SIZES.EDITOR
+    
     self:InitializeEditor()
     
     -- Initialize undo/redo stacks for future implementation
@@ -68,18 +77,56 @@ function NotepadEditor:InitializeEditor()
     editor:SetString("")
     editor.allow_newline = true
     
+    -- Set up text input handler for automatic line breaking
+    function editor:OnTextInput(text)
+        -- Get the editor instance from parent's reference
+        local editor_instance = self.parent.parent.editor
+        if editor_instance and editor_instance.text_utils:HandleTextInput(self, text, Config) then
+            editor_instance:ScrollToCursor()
+            return true
+        end
+        return false  -- Don't call base TextEdit.OnTextInput to prevent double input
+    end
+    
     -- Set up raw key handler for enter key and future key commands
     function editor:OnRawKey(key, down)
         -- Get the editor instance from parent's reference
         local editor_instance = self.parent.parent.editor
-        if editor_instance and editor_instance:HandleKeyCommand(key, down) then
-            return true
+        if editor_instance then
+            -- Debug logging for key presses
+            print("[Debug] Key pressed:", key, "Down:", down)
+            
+            -- Handle backspace explicitly
+            if key == KEY_BACKSPACE and down then
+                local current_text = self:GetString()
+                local cursor_pos = self:GetEditCursorPos()
+                if cursor_pos > 0 then
+                    -- Delete char to the left of cursor
+                    local new_text = current_text:sub(1, cursor_pos - 1) .. current_text:sub(cursor_pos + 1)
+                    self:SetString(new_text)
+                    self:SetEditCursorPos(cursor_pos - 1)
+                    editor_instance:ScrollToCursor()
+                    return true
+                end
+                return TextEdit.OnRawKey(self, key, down)
+            end
+            
+            if editor_instance.text_utils:HandleEnterKey(self, key, down) then
+                editor_instance:ScrollToCursor()
+                return true
+            end
+            
+            -- Handle other key commands
+            if editor_instance:HandleKeyCommand(key, down) then
+                editor_instance:ScrollToCursor()
+                return true
+            end
         end
         return TextEdit.OnRawKey(self, key, down)
     end
     
     -- Initialize focus handling
-    self:SetupFocusHandlers()
+    self:SetupFocusHandlers(editor)
 end
 
 --[[
@@ -93,16 +140,13 @@ function NotepadEditor:HandleKeyCommand(key, down)
     -- Handle Enter key for line breaks
     if down and (key == KEY_ENTER or key == KEY_KP_ENTER) then
         local text = self:GetText()
-        self:SetText(text .. "\n")
+        local cursor_pos = self.editor:GetEditCursorPos()
+        local new_text = text:sub(1, cursor_pos) .. "\n" .. text:sub(cursor_pos + 1)
+        self:SetText(new_text)
         self.editor:SetEditing(true)
+        self.editor:SetEditCursorPos(cursor_pos + 1)
         return true
     end
-    
-    -- Future key command handling (e.g., Ctrl+Z for undo)
-    -- if down and key == KEY_Z and TheInput:IsKeyDown(KEY_CTRL) then
-    --     self:Undo()
-    --     return true
-    -- end
     
     return false
 end
@@ -111,9 +155,7 @@ end
     Sets up focus gain and loss handlers for the editor.
     Manages visual feedback when the editor gains or loses focus.
 ]]
-function NotepadEditor:SetupFocusHandlers()
-    local editor = self.editor
-    
+function NotepadEditor:SetupFocusHandlers(editor)
     function editor:OnGainFocus()
         TextEdit.OnGainFocus(self)
         self:SetEditing(true)
@@ -205,6 +247,45 @@ function NotepadEditor:Redo()
         local text = table.remove(self.redo_stack)
         self.editor:SetString(text)
     end
+end
+
+--[[
+    Scrolls the editor to ensure the cursor is visible.
+    Called after text changes or cursor movement.
+]]
+function NotepadEditor:ScrollToCursor()
+    local editor = self.editor
+    if not editor or not editor.SetScroll then return end
+    
+    -- Get cursor position and editor dimensions
+    local cursor_pos = editor.GetEditCursorPos and editor:GetEditCursorPos() or 0
+    local text = editor:GetString() or ""
+    local lines = self.text_utils:SplitByLine(text)
+    
+    -- Calculate cursor line
+    local cursor_line = 1
+    local pos = 0
+    for i, line in ipairs(lines) do
+        pos = pos + #line + 1  -- +1 for newline
+        if pos > cursor_pos then
+            cursor_line = i
+            break
+        end
+    end
+    
+    -- Calculate scroll position
+    local line_height = editor.size or 25  -- Use editor's font size for line height
+    local visible_lines = Config.DIMENSIONS.EDITOR.HEIGHT / line_height
+    local total_lines = #lines
+    
+    -- Ensure we don't divide by zero
+    if total_lines < 1 then total_lines = 1 end
+    
+    -- Adjust scroll position to show more context below cursor
+    local scroll_pos = math.max(0, math.min(1, (cursor_line - math.floor(visible_lines/3)) / total_lines))
+    
+    -- Apply scroll position with smooth animation
+    editor:SetScroll(scroll_pos)
 end
 
 return NotepadEditor

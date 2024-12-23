@@ -6,6 +6,7 @@
     - Asset registration
     - Key binding configuration
     - Notepad widget creation and toggling
+    - Test command for development
     
     The module sets up the necessary environment and provides the core
     functionality to show/hide the notepad in response to key presses.
@@ -29,6 +30,8 @@ local TOGGLE_KEY = GetModConfigData("TOGGLE_KEY")
 Assets = {
     Asset("ATLAS", "images/global.xml"),    -- Global UI elements atlas
     Asset("IMAGE", "images/global.tex"),    -- Global UI elements texture
+    Asset("ATLAS", "images/global_redux.xml"),    -- Global redux UI elements atlas
+    Asset("IMAGE", "images/global_redux.tex"),    -- Global redux UI elements texture
     Asset("ATLAS", "modicon.xml"),          -- Mod icon atlas
     Asset("IMAGE", "modicon.tex"),          -- Mod icon texture
 }
@@ -38,6 +41,60 @@ _G.NotepadWidget = require "widgets/notepadwidget"
 
 -- Track the current notepad instance
 local notepad = nil
+
+--[[
+    Development Test Command
+    
+    Adds a console command '/testnotes' that runs the text utilities tests.
+    This helps verify the line breaking and text manipulation functionality.
+    The command is only available in development/debug mode.
+]]
+if _G.CHEATS_ENABLED then
+    local function RunNotepadTests(...)
+        print("[Quick Notes] Starting Text Utils Tests...")
+        
+        -- Load and run tests
+        local success, result = pcall(function()
+            require("notepad/test_text_utils")
+        end)
+        
+        if success then
+            print("[Quick Notes] Tests completed successfully!")
+        else
+            print("[Quick Notes] Test error:", result)
+        end
+    end
+    
+    -- Register the test command
+    _G.TheNet:AddServerModRPCHandler("QuickNotes", "RunTests", RunNotepadTests)
+    AddModRPCHandler("QuickNotes", "RunTests", RunNotepadTests)
+    
+    -- Add console command
+    _G.STRINGS.QUICKNOTES_COMMANDS = {
+        TESTNOTES = {
+            COMMAND = "testnotes",
+            DESCRIPTION = "Run Quick Notes text utilities tests",
+        }
+    }
+    
+    AddUserCommand("testnotes", {
+        aliases = {"tn"},
+        prettyname = "Test Quick Notes",
+        desc = "Run Quick Notes text utilities tests",
+        permission = _G.COMMAND_PERMISSION.USER,
+        slash = true,
+        usermenu = false,
+        servermenu = false,
+        params = {},
+        fn = function(params, caller)
+            if caller and caller.player_classified then
+                caller.player_classified:RemoteExecute("RunTests", "QuickNotes")
+                return true
+            end
+            return false
+        end
+    })
+end
 
 --[[
     Toggles the notepad's visibility.

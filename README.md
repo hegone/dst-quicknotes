@@ -12,7 +12,11 @@
 
 ### **Features** 🚀  
 - **Quick Toggle with 'N' Key**  
-   Press **N** (customizable)to instantly show or hide your personal notepad.
+   - Press **N** (customizable) to instantly show your personal notepad.
+   - Press **Ctrl+R** to reset the notepad.
+   - Press **Ctrl+S** to save the notepad.
+   - Press **Esc** to close the notepad.
+   - Press **Enter** to add a new line.
 
 - **Smart UI Interaction** 🖱️
    - Click outside to close the notepad
@@ -22,7 +26,7 @@
 - **Full Text Editor** ✍️
    - Write down anything you need to remember
    - Support for multiple lines using Enter key
-   - Scroll for longer notes
+   - Scroll for longer notes (coming soon)
    - Word wrap for better readability
 
 - **Persistent Storage** 💾
@@ -31,7 +35,7 @@
    - Never lose important information
 
 - **Clean Design** 🎨
-   - Wooden-themed UI that fits DST's style
+   - Wooden-themed UI that fits DST's style (coming soon)
    - Clear, readable text
    - Unobtrusive when not in use
 
@@ -43,6 +47,7 @@
 - Planning builds and expeditions
 - Organizing team strategies in multiplayer
 - Making to-do lists for your survival goals
+- Writing down your thoughts and ideas
 
 ---
 
