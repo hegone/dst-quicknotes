@@ -12,11 +12,11 @@
 
 ### **Features** 🚀  
 - **Quick Toggle with 'N' Key**  
-   Press **N** (customizable)to instantly show your personal notepad.
-   Press **Ctrl+R** to reset the notepad.
-   Press **Ctrl+S** to save the notepad.
-   Press **Esc** to close the notepad.
-   Press **Enter** to add a new line.
+   - Press **N** (customizable) to instantly show your personal notepad.
+   - Press **Ctrl+R** to reset the notepad.
+   - Press **Ctrl+S** to save the notepad.
+   - Press **Esc** to close the notepad.
+   - Press **Enter** to add a new line.
 
 - **Smart UI Interaction** 🖱️
    - Click outside to close the notepad
