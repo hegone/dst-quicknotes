@@ -30,6 +30,8 @@ local TOGGLE_KEY = GetModConfigData("TOGGLE_KEY")
 Assets = {
     Asset("ATLAS", "images/global.xml"),    -- Global UI elements atlas
     Asset("IMAGE", "images/global.tex"),    -- Global UI elements texture
+    Asset("ATLAS", "images/global_redux.xml"),    -- Global redux UI elements atlas
+    Asset("IMAGE", "images/global_redux.tex"),    -- Global redux UI elements texture
     Asset("ATLAS", "modicon.xml"),          -- Mod icon atlas
     Asset("IMAGE", "modicon.tex"),          -- Mod icon texture
 }

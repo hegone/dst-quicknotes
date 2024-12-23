@@ -214,16 +214,17 @@ function NotepadWidget:InitializeCloseButton()
     button_container:SetPosition(230, 170)
     
     -- Add reset button
-    self.reset_btn = button_container:AddChild(ImageButton("images/global.xml", "square.tex"))
+    self.reset_btn = button_container:AddChild(ImageButton("images/global_redux.xml", "close.tex"))
     self.reset_btn:SetPosition(-30, 0)  -- Position to the left of close button
-    self.reset_btn:SetScale(0.5)
+    self.reset_btn:SetScale(0.7)
     self.reset_btn:SetOnClick(function() self:Reset() end)
     self.reset_btn:SetHoverText("Reset Notepad (Ctrl+R)")
     self.reset_btn:SetImageNormalColour(0.7, 0.2, 0.2, 1)  -- Red tint
+    self.reset_btn:SetRotation(45)  -- Rotate it to make it look different from the close button
     
     -- Add close button
-    self.close_btn = button_container:AddChild(ImageButton("images/global.xml", "square.tex"))
-    self.close_btn:SetScale(0.5)
+    self.close_btn = button_container:AddChild(ImageButton("images/global_redux.xml", "close.tex"))
+    self.close_btn:SetScale(0.7)
     self.close_btn:SetOnClick(function() self:Close() end)
     self.close_btn:SetHoverText("Close Notepad")
     self.close_btn:SetImageNormalColour(0.2, 0.2, 0.2, 1)  -- Dark gray tint
@@ -431,6 +432,11 @@ function NotepadWidget:OnRawKey(key, down)
     -- Handle reset shortcut (Ctrl+R)
     if down and key == KEY_R and TheInput:IsKeyDown(KEY_CTRL) then
         self:Reset()
+        return true
+    end
+    
+    -- Forward to input handler for other shortcuts (like Ctrl+S)
+    if self.input_handler:OnRawKey(key, down) then
         return true
     end
     

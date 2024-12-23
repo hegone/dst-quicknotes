@@ -47,13 +47,6 @@ end)
 ]]
 function InputHandler:SetupKeyboardHandlers()
     self.keyboard_handlers = {
-        -- Ctrl+S to save
-        [CONTROL_ACCEPT] = function()
-            if TheInput:IsKeyDown(KEY_CTRL) then
-                self.widget:SaveNotes()
-                return true
-            end
-        end,
         -- Escape to close
         [CONTROL_CANCEL] = function()
             self.widget:Close()
@@ -72,6 +65,22 @@ end
 function InputHandler:OnControl(control, down)
     if down and self.keyboard_handlers[control] then
         return self.keyboard_handlers[control]()
+    end
+    return false
+end
+
+--[[
+    Handles raw key events for keyboard shortcuts.
+    
+    @param key (number) The key code
+    @param down (boolean) Whether the key is being pressed down
+    @return (boolean) True if the key was handled
+]]
+function InputHandler:OnRawKey(key, down)
+    -- Handle Ctrl+S to save
+    if down and key == KEY_S and TheInput:IsKeyDown(KEY_CTRL) then
+        self.widget:SaveNotes()
+        return true
     end
     return false
 end
