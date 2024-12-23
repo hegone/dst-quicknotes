@@ -20,6 +20,7 @@ Features:
 Keyboard Shortcuts:
 - Press N (configurable) to toggle
 - Ctrl+S to save manually
+- Ctrl+R to reset
 - ESC to close
 - Enter for new lines]]
 
