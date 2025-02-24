@@ -171,20 +171,15 @@ function TextUtils:HandleTextInput(editor, char, config)
     end
 
     -- Filter out ESC key sequences (may show as "?" or other characters)
-    -- This is a comprehensive check for ESC key sequences
+    -- Only filter if ESC key is actually being pressed
     if TheInput:IsKeyDown(KEY_ESCAPE) then
         return true
     end
     
     -- ESC key sequences in terminal environments often start with these codes
-    -- Check for common ESC sequence patterns
-    if char:byte(1) == 27 or char == "?" then
-        print("[Quick Notes] Filtered potential ESC key sequence")
-        return true
-    end
-    
-    -- Filter out ESC character (which may appear as "?")
-    if char == "?" and TheInput:IsKeyDown(KEY_ESCAPE) then
+    -- Only check for actual ESC character (byte 27), not "?" character
+    if char:byte(1) == 27 then
+        print("[Quick Notes] Filtered ESC key sequence")
         return true
     end
     

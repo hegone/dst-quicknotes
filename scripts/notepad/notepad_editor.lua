@@ -79,8 +79,9 @@ function NotepadEditor:InitializeEditor()
     
     -- Set up text input handler for automatic line breaking
     function editor:OnTextInput(text)
-        -- Filter out ESC character (often appears as "?")
-        if text == "?" and TheInput:IsKeyDown(KEY_ESCAPE) then
+        -- Filter out ESC character only when ESC key is actually pressed
+        -- This allows normal "?" input while preventing ESC key issues
+        if TheInput:IsKeyDown(KEY_ESCAPE) then
             return true
         end
         
