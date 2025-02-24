@@ -79,6 +79,11 @@ function NotepadEditor:InitializeEditor()
     
     -- Set up text input handler for automatic line breaking
     function editor:OnTextInput(text)
+        -- Filter out ESC character (often appears as "?")
+        if text == "?" and TheInput:IsKeyDown(KEY_ESCAPE) then
+            return true
+        end
+        
         -- Get the editor instance from parent's reference
         local editor_instance = self.parent.parent.editor
         if editor_instance and editor_instance.text_utils:HandleTextInput(self, text, Config) then
@@ -95,6 +100,15 @@ function NotepadEditor:InitializeEditor()
         if editor_instance then
             -- Debug logging for key presses
             print("[Debug] Key pressed:", key, "Down:", down)
+            
+            -- Handle ESC key to prevent text input
+            if key == KEY_ESCAPE and down then
+                -- Let the parent widget handle the ESC key for closing
+                if self.parent and self.parent.parent and self.parent.parent.Close then
+                    self.parent.parent:Close()
+                end
+                return true
+            end
             
             -- Handle backspace explicitly
             if key == KEY_BACKSPACE and down then

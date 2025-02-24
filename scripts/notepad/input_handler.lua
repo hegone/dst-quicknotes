@@ -63,6 +63,12 @@ end
     @return (boolean) True if the input was handled, false otherwise
 ]]
 function InputHandler:OnControl(control, down)
+    if down and control == CONTROL_CANCEL then
+        -- Force return true to prevent event propagation
+        self.widget:Close()
+        return true
+    end
+    
     if down and self.keyboard_handlers[control] then
         return self.keyboard_handlers[control]()
     end
@@ -77,6 +83,12 @@ end
     @return (boolean) True if the key was handled
 ]]
 function InputHandler:OnRawKey(key, down)
+    -- Handle Escape key to close the notepad
+    if down and key == KEY_ESCAPE then
+        self.widget:Close()
+        return true
+    end
+    
     -- Handle Ctrl+S to save
     if down and key == KEY_S and TheInput:IsKeyDown(KEY_CTRL) then
         self.widget:SaveNotes()

@@ -170,6 +170,24 @@ function TextUtils:HandleTextInput(editor, char, config)
         return false
     end
 
+    -- Filter out ESC key sequences (may show as "?" or other characters)
+    -- This is a comprehensive check for ESC key sequences
+    if TheInput:IsKeyDown(KEY_ESCAPE) then
+        return true
+    end
+    
+    -- ESC key sequences in terminal environments often start with these codes
+    -- Check for common ESC sequence patterns
+    if char:byte(1) == 27 or char == "?" then
+        print("[Quick Notes] Filtered potential ESC key sequence")
+        return true
+    end
+    
+    -- Filter out ESC character (which may appear as "?")
+    if char == "?" and TheInput:IsKeyDown(KEY_ESCAPE) then
+        return true
+    end
+    
     -- Handle alternative backspace codes
     if char == "\8" or char == "\127" then
         local text = editor:GetString() or ""
