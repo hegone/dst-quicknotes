@@ -41,3 +41,6 @@ luac.out
 
 # Repomix output
 repomix-output.xml
+
+# Cursor rules
+.cursor

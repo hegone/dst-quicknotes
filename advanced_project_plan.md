@@ -29,7 +29,7 @@ Below is a modified version of the guide, incorporating the refactored structure
 
 ### Detailed Steps
 
-#### 1. Automatic Line-Break Insertion
+#### 1. Automatic Line-Break Insertion - Complete!
 
 **Goal:**  
 When the user types beyond the configured line width, automatically insert a newline in the underlying text.
