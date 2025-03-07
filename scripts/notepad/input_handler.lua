@@ -92,6 +92,10 @@ function InputHandler:OnRawKey(key, down)
     -- Handle Ctrl+S to save
     if down and key == KEY_S and TheInput:IsKeyDown(KEY_CTRL) then
         self.widget:SaveNotes()
+        -- Play a sound when saving
+        if TheFrontEnd and TheFrontEnd:GetSound() then
+            TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_move")
+        end
         return true
     end
     return false
@@ -205,6 +209,7 @@ function InputHandler:OnMouseButton(button, down, x, y)
             end
         else
             self:StopDragging()
+            return false  -- Explicitly return false for consistency
         end
     end
     return false

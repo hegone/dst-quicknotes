@@ -30,11 +30,20 @@ local TextEdit = require "widgets/textedit"
 local TextUtils = Class(function(self)
     -- Initialize widget base for text measurement
     self.measuring_widget = Widget("TextMeasurer")
+    
+    -- Initialize cache for text measurements
+    self.width_cache = {}
+    self.cache_hits = 0
+    self.cache_misses = 0
+    
+    -- Max cache size to prevent memory issues
+    self.max_cache_size = 500
 end)
 
 --[[
     Calculates the width of a text string in pixels.
     Uses a temporary Text widget for accurate measurement.
+    Implements caching to improve performance for repeated measurements.
     
     @param str (string) The text string to measure
     @param font (string) The font to use for measurement
@@ -44,8 +53,23 @@ end)
 function TextUtils:CalculateTextWidth(str, font, font_size)
     if not str then return 0 end
     
+    -- Normalize inputs for cache consistency
+    font = font or DEFAULTFONT
+    font_size = font_size or 25
+    
+    -- Create cache key
+    local cache_key = str .. "|" .. font .. "|" .. tostring(font_size)
+    
+    -- Check if result is cached
+    if self.width_cache[cache_key] then
+        self.cache_hits = self.cache_hits + 1
+        return self.width_cache[cache_key]
+    end
+    
+    self.cache_misses = self.cache_misses + 1
+    
     -- Create text widget as child of measuring widget
-    local measuring_text = self.measuring_widget:AddChild(Text(font or DEFAULTFONT, font_size or 25))
+    local measuring_text = self.measuring_widget:AddChild(Text(font, font_size))
     local w, h
     
     -- Use pcall to ensure cleanup even if SetString fails
@@ -64,7 +88,43 @@ function TextUtils:CalculateTextWidth(str, font, font_size)
         return 0
     end
     
+    -- Cache the result
+    self.width_cache[cache_key] = w
+    
+    -- Prune cache if it grows too large
+    self:PruneCache()
+    
     return w
+end
+
+--[[
+    Prunes the measurement cache if it exceeds the maximum size.
+    Removes random entries to keep the cache size manageable.
+]]
+function TextUtils:PruneCache()
+    local cache_size = 0
+    for _ in pairs(self.width_cache) do 
+        cache_size = cache_size + 1
+    end
+    
+    -- If cache is too large, remove oldest entries
+    if cache_size > self.max_cache_size then
+        local keys_to_remove = {}
+        local remove_count = math.floor(cache_size * 0.25) -- Remove 25% of entries
+        
+        -- Collect keys to remove
+        for k in pairs(self.width_cache) do
+            table.insert(keys_to_remove, k)
+            if #keys_to_remove >= remove_count then break end
+        end
+        
+        -- Remove collected keys
+        for _, k in ipairs(keys_to_remove) do
+            self.width_cache[k] = nil
+        end
+        
+        print("[Quick Notes] Pruned text measurement cache, removed " .. remove_count .. " entries")
+    end
 end
 
 --[[
@@ -175,6 +235,21 @@ function TextUtils:InitializeEditor(editor, config)
     
     -- Initialize focus handling
     self:SetupFocusHandlers(editor)
+end
+
+--[[
+    Cleans up this utils instance, including the measuring widget.
+    Should be called when the notepad is being destroyed.
+]]
+function TextUtils:Kill()
+    -- Clean up cache
+    self.width_cache = nil
+    
+    -- Clean up measuring widget
+    if self.measuring_widget then
+        self.measuring_widget:Kill()
+        self.measuring_widget = nil
+    end
 end
 
 return TextUtils

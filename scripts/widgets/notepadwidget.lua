@@ -49,6 +49,9 @@ local NotepadWidget = Class(Screen, function(self)
     -- Initialize editor after UI is set up
     self.editor = NotepadEditor(self.root, DEFAULTFONT, Config.FONT_SIZES.EDITOR)
     
+    -- Initialize focus management using DST's standard approach
+    self.focus_forward = self.editor.editor
+    
     -- Set default focus and load saved notes
     self.default_focus = self.editor
     self:LoadNotes()
@@ -91,6 +94,11 @@ function NotepadWidget:OnBecomeActive()
     self:Show()
     self.root:ScaleTo(0, 1, Config.SETTINGS.OPEN_ANIMATION_DURATION)
     
+    -- Play sound when opening
+    if TheFrontEnd and TheFrontEnd:GetSound() then
+        TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/craft_open")
+    end
+    
     self.input_handler:AddClickHandler()
     self.state:Activate()
 end
@@ -102,6 +110,11 @@ end
 function NotepadWidget:OnBecomeInactive()
     print("[Quick Notes] NotepadWidget becoming inactive")
     NotepadWidget._base.OnBecomeInactive(self)
+    
+    -- Play sound when closing
+    if TheFrontEnd and TheFrontEnd:GetSound() then
+        TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/craft_close")
+    end
     
     self.input_handler:RemoveClickHandler()
     self:Hide()
@@ -130,6 +143,10 @@ function NotepadWidget:SaveNotes()
     
     if self.data_manager:SaveNotes(content) then
         self.state:ShowSaveIndicator("Saved!")
+        -- Play sound when saving
+        if TheFrontEnd and TheFrontEnd:GetSound() then
+            TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_positive")
+        end
     end
 end
 
@@ -234,10 +251,17 @@ function NotepadWidget:OnDestroy()
     
     -- Destroy UI components
     if self.save_indicator then self.save_indicator:Kill() end
+    
+    -- Clean up text utils inside editor
+    if self.editor and self.editor.text_utils then
+        self.editor.text_utils:Kill()
+    end
+    
     if self.editor then
         self.editor:Kill()
         self.editor = nil
     end
+    
     if self.close_btn then self.close_btn:Kill() end
     if self.title then self.title:Kill() end
     if self.frame then self.frame:Kill() end
