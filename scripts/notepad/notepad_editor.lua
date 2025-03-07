@@ -7,8 +7,8 @@
     - Text manipulation methods
     - Scrolling support
     
-    The editor handles text input and formatting while delegating
-    key handling to EditorKeyHandler and text input processing to TextInputHandler.
+    The editor handles text input and formatting, delegating input handling
+    to the InputHandler module for uniformity.
 
     Usage:
         local NotepadEditor = require("notepad/notepad_editor")
@@ -19,7 +19,6 @@
 local TextEdit = require "widgets/textedit"
 local Config = require "notepad/config"
 local TextUtils = require "notepad/text_utils"
-local EditorKeyHandler = require "notepad/editor_key_handler"
 local TextInputHandler = require "notepad/text_input_handler"
 
 --[[
@@ -43,12 +42,14 @@ local NotepadEditor = Class(function(self, parent, font, font_size)
     -- Create the editor widget
     self.editor = self.parent:AddChild(TextEdit(font or DEFAULTFONT, font_size or Config.FONT_SIZES.EDITOR))
     
+    -- Make sure the editor is clickable
+    self.editor:SetClickable(true)
+    
     -- Store font settings for text measurement
     self.editor.font = font or DEFAULTFONT
     self.editor.size = font_size or Config.FONT_SIZES.EDITOR
     
-    -- Initialize specialized handlers
-    self.key_handler = EditorKeyHandler(self)
+    -- Initialize text input handler
     self.text_input_handler = TextInputHandler(self.text_utils)
     
     self:InitializeEditor()
@@ -78,21 +79,27 @@ function NotepadEditor:InitializeEditor()
     editor:SetString("")
     editor.allow_newline = true
     
-    -- Set up text input handler for automatic line breaking
-    function editor:OnTextInput(text)
-        -- Store reference to the editor instance for easier access
-        local editor_instance = self.parent.parent.editor
-        
-        -- Handle the text input using our specialized handler
-        if editor_instance.text_input_handler:HandleTextInput(self, text, Config) then
-            editor_instance:ScrollToCursor()
+    -- Set up text input handler
+    local original_text_input = editor.OnTextInput
+    editor.OnTextInput = function(widget, text)
+        -- Filter out ESC character only when ESC key is actually pressed
+        if TheInput:IsKeyDown(KEY_ESCAPE) then
             return true
         end
-        return false  -- Don't call base TextEdit.OnTextInput to prevent double input
+        
+        -- Handle the text input using our specialized handler
+        if self.text_input_handler:HandleTextInput(widget, text, Config) then
+            self:ScrollToCursor()
+            return true
+        end
+        
+        -- Fall back to original handler if we have one
+        if original_text_input then
+            return original_text_input(widget, text)
+        end
+        
+        return false
     end
-    
-    -- Set up key handler for all keyboard input
-    self.key_handler:SetupKeyHandler(editor)
     
     -- Initialize focus handling
     self:SetupFocusHandlers(editor)
@@ -109,11 +116,23 @@ function NotepadEditor:SetupFocusHandlers(editor)
         TextEdit.OnGainFocus(self)
         self:SetEditing(true)
         self:SetColour(1, 1, 1, 1)
+        print("[Quick Notes] Editor gained focus")
     end
     
     function editor:OnLoseFocus()
         TextEdit.OnLoseFocus(self)
         self:SetColour(1, 1, 1, 1)
+        print("[Quick Notes] Editor lost focus")
+    end
+    
+    -- Override editor's SetFocus to ensure it sets editing mode
+    local original_set_focus = editor.SetFocus
+    editor.SetFocus = function(widget)
+        if original_set_focus then
+            original_set_focus(widget)
+        end
+        widget:SetEditing(true)
+        print("[Quick Notes] Editor focus explicitly set")
     end
 end
 
@@ -134,10 +153,6 @@ end
     @param text (string) The new text content (optional, defaults to empty string)
 ]]
 function NotepadEditor:SetText(text)
-    -- Add to key handler's undo stack before changing text
-    if self.key_handler then
-        self.key_handler:PushToUndoStack(self:GetText())
-    end
     self.editor:SetString(text or "")
 end
 
@@ -146,6 +161,7 @@ end
 ]]
 function NotepadEditor:SetFocus()
     self.editor:SetFocus()
+    self.editor:SetEditing(true)
 end
 
 --[[
@@ -185,6 +201,18 @@ function NotepadEditor:ScrollToCursor()
     
     -- Apply scroll position with smooth animation
     editor:SetScroll(scroll_pos)
+end
+
+--[[
+    Positions the cursor at the specified character index.
+    
+    @param pos (number) The character index to position the cursor at
+]]
+function NotepadEditor:SetCursorPosition(pos)
+    if self.editor and self.editor.SetEditCursorPos then
+        self.editor:SetEditCursorPos(pos)
+        self:ScrollToCursor()
+    end
 end
 
 --[[

@@ -96,10 +96,14 @@ function NotepadUI:InitializeClickableBackground()
     self.parent.bg:SetSize(Config.DIMENSIONS.BACKGROUND.WIDTH, Config.DIMENSIONS.BACKGROUND.HEIGHT)
     self.parent.bg:SetTint(0, 0, 0, 0)  -- Completely transparent
     self.parent.bg:SetClickable(true)
+    
+    -- Improved click handler for more reliable focus behavior
     self.parent.bg.OnMouseButton = function(_, button, down, x, y)
         if button == MOUSEBUTTON_LEFT and down then
+            -- Just focus the editor on background clicks
             if self.parent.editor then
                 self.parent.editor:SetFocus()
+                print("[Quick Notes] DEBUG: Focusing editor from background click")
             end
             return true
         end
@@ -119,6 +123,25 @@ function NotepadUI:InitializeFrame()
         Config.COLORS.FRAME_TINT.b,
         Config.COLORS.FRAME_TINT.a
     )
+    
+    -- Make frame clickable to also handle focus
+    self.parent.frame:SetClickable(true)
+    self.parent.frame.OnMouseButton = function(_, button, down, x, y)
+        if button == MOUSEBUTTON_LEFT and down then
+            -- Make sure click isn't in title bar area (for dragging)
+            local title_pos = self.parent.title:GetWorldPosition()
+            local title_h = select(2, self.parent.title:GetRegionSize())
+            if math.abs(y - title_pos.y) > title_h/2 then
+                -- Focus the editor
+                if self.parent.editor then
+                    self.parent.editor:SetFocus()
+                    print("[Quick Notes] DEBUG: Focusing editor from frame click")
+                end
+                return true
+            end
+        end
+        return false
+    end
 end
 
 --[[
@@ -174,7 +197,13 @@ function NotepadUI:InitializeCloseButton()
     self.parent.reset_btn = button_container:AddChild(ImageButton("images/global_redux.xml", "close.tex"))
     self.parent.reset_btn:SetPosition(-30, 0)  -- Position to the left of close button
     self.parent.reset_btn:SetScale(0.7)
-    self.parent.reset_btn:SetOnClick(function() self.parent:Reset() end)
+    self.parent.reset_btn:SetOnClick(function() 
+        self.parent:Reset()
+        -- Refocus editor after reset
+        if self.parent.editor then
+            self.parent.editor:SetFocus()
+        end
+    end)
     self.parent.reset_btn:SetHoverText("Reset Notepad (Ctrl+R)")
     self.parent.reset_btn:SetImageNormalColour(0.7, 0.2, 0.2, 1)  -- Red tint
     self.parent.reset_btn:SetRotation(45)  -- Rotate it to make it look different from the close button
@@ -195,19 +224,41 @@ end
     @return (boolean) True if the point is within the widget
 ]]
 function NotepadUI:IsMouseInWidget(x, y)
-    if not self.parent.bg then return false end
+    -- Check if we have the required components
+    if not self.parent or not self.parent.root or not self.parent.bg then 
+        print("[Quick Notes] DEBUG: Missing components in IsMouseInWidget")
+        return false 
+    end
+    
+    -- Check if point is within editor area
+    if self:IsInEditorArea(x, y) then
+        print("[Quick Notes] DEBUG: Point is in editor area - IsMouseInWidget")
+        return true
+    end
     
     -- Check title bar area
-    local title_pos = self.parent.title:GetWorldPosition()
-    local title_w, title_h = self.parent.title:GetRegionSize()
-    local in_title = math.abs(y - title_pos.y) <= title_h/2
+    if self.parent.title then
+        local title_pos = self.parent.title:GetWorldPosition()
+        local title_w, title_h = self.parent.title:GetRegionSize()
+        local in_title = math.abs(x - title_pos.x) <= title_w/2 and math.abs(y - title_pos.y) <= title_h/2
+        if in_title then
+            print("[Quick Notes] DEBUG: Point is in title area")
+            return true
+        end
+    end
     
     -- Check close button area
-    local close_pos = self.parent.close_btn:GetWorldPosition()
-    local close_w, close_h = self.parent.close_btn:GetSize()
-    local in_close = math.abs(x - close_pos.x) <= close_w/2 and math.abs(y - close_pos.y) <= close_h/2
+    if self.parent.close_btn then
+        local close_pos = self.parent.close_btn:GetWorldPosition()
+        local close_w, close_h = self.parent.close_btn:GetSize()
+        local in_close = math.abs(x - close_pos.x) <= close_w/2 and math.abs(y - close_pos.y) <= close_h/2
+        if in_close then
+            print("[Quick Notes] DEBUG: Point is in close button area")
+            return true
+        end
+    end
     
-    -- Check main notepad area
+    -- Check main notepad area (background)
     local pos = self.parent.root:GetPosition()
     local size = {self.parent.bg:GetSize()}
     local left = pos.x - size[1]/2
@@ -216,7 +267,35 @@ function NotepadUI:IsMouseInWidget(x, y)
     local top = pos.y + size[2]/2
     local in_notepad = x >= left and x <= right and y >= bottom and y <= top
     
-    return in_title or in_close or in_notepad
+    print("[Quick Notes] DEBUG: IsMouseInWidget check - in_notepad:", in_notepad)
+    
+    return in_notepad
+end
+
+--[[
+    Checks if a point is within the editor area specifically.
+    
+    @param x (number) X coordinate to check
+    @param y (number) Y coordinate to check
+    @return (boolean) True if the point is within the editor area
+]]
+function NotepadUI:IsInEditorArea(x, y)
+    if not self.parent or not self.parent.editor or not self.parent.editor.editor then
+        print("[Quick Notes] DEBUG: Missing editor components in IsInEditorArea")
+        return false
+    end
+    
+    local editor_widget = self.parent.editor.editor
+    local editor_pos = editor_widget:GetWorldPosition()
+    local editor_width, editor_height = editor_widget:GetRegionSize()
+    
+    -- Check if point is within editor bounds
+    local in_editor = math.abs(x - editor_pos.x) <= editor_width/2 and 
+                     math.abs(y - editor_pos.y) <= editor_height/2
+    
+    print("[Quick Notes] DEBUG: IsInEditorArea check:", x, y, "editor at", editor_pos.x, editor_pos.y, "result:", in_editor)
+    
+    return in_editor
 end
 
 return NotepadUI

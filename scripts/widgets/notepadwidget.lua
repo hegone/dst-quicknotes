@@ -61,11 +61,13 @@ end)
     Updates widget state, primarily handling dragging.
 ]]
 function NotepadWidget:OnUpdate()
-    self.input_handler:UpdateDragging(self.root)
+    if self.input_handler then
+        self.input_handler:UpdateDragging(self.root)
+    end
 end
 
 --[[
-    Handles mouse button events.
+    Handles mouse button events for the entire notepad.
     
     @param button (number) The mouse button being pressed
     @param down (boolean) Whether the button is being pressed down
@@ -74,9 +76,12 @@ end
     @return (boolean) True if the input was handled
 ]]
 function NotepadWidget:OnMouseButton(button, down, x, y)
-    if self.input_handler:OnMouseButton(button, down, x, y) then
+    -- First let the input handler try to handle it (dragging, etc)
+    if self.input_handler and self.input_handler:OnMouseButton(button, down, x, y) then
         return true
     end
+    
+    -- If not handled by input handler, pass to parent class
     return NotepadWidget._base.OnMouseButton(self, button, down, x, y)
 end
 
@@ -91,8 +96,20 @@ function NotepadWidget:OnBecomeActive()
     self:Show()
     self.root:ScaleTo(0, 1, Config.SETTINGS.OPEN_ANIMATION_DURATION)
     
-    self.input_handler:AddClickHandler()
-    self.state:Activate()
+    -- Add click handler to detect clicks within editor
+    if self.input_handler then
+        self.input_handler:AddClickHandler()
+    end
+    
+    -- Activate state management
+    if self.state then
+        self.state:Activate()
+    end
+    
+    -- Focus editor
+    if self.editor then
+        self.editor:SetFocus()
+    end
 end
 
 --[[
@@ -103,9 +120,17 @@ function NotepadWidget:OnBecomeInactive()
     print("[Quick Notes] NotepadWidget becoming inactive")
     NotepadWidget._base.OnBecomeInactive(self)
     
-    self.input_handler:RemoveClickHandler()
+    -- Remove input handlers
+    if self.input_handler then
+        self.input_handler:RemoveClickHandler()
+    end
+    
     self:Hide()
-    self.state:Deactivate()
+    
+    -- Deactivate state
+    if self.state then
+        self.state:Deactivate()
+    end
 end
 
 --[[
@@ -114,7 +139,11 @@ end
 function NotepadWidget:Close()
     print("[Quick Notes] NotepadWidget closing")
     self:SaveNotes()
-    self.state:SetOpen(false)
+    
+    if self.state then
+        self.state:SetOpen(false)
+    end
+    
     if _G.TheFrontEnd:GetActiveScreen() == self then
         _G.TheFrontEnd:PopScreen(self)
     end
@@ -125,10 +154,11 @@ end
 ]]
 function NotepadWidget:SaveNotes()
     if not self.editor then return end
+    
     local content = self.editor:GetText()
     if not content then return end
     
-    if self.data_manager:SaveNotes(content) then
+    if self.data_manager:SaveNotes(content) and self.state then
         self.state:ShowSaveIndicator("Saved!")
     end
 end
@@ -137,6 +167,8 @@ end
     Loads saved notes from persistent storage.
 ]]
 function NotepadWidget:LoadNotes()
+    if not self.data_manager then return end
+    
     self.data_manager:LoadNotes(function(success, content)
         if success and self.editor then
             self.editor:SetText(content)
@@ -161,12 +193,17 @@ function NotepadWidget:Reset(save_state)
     self.editor:SetText("")
     
     -- Show feedback
-    self.state:ShowSaveIndicator("Reset!")
+    if self.state then
+        self.state:ShowSaveIndicator("Reset!")
+    end
     
     -- Save cleared state if requested
     if save_state ~= false then
         self:SaveNotes()
     end
+    
+    -- Refocus editor
+    self.editor:SetFocus()
 end
 
 --[[
@@ -178,7 +215,12 @@ end
 ]]
 function NotepadWidget:OnControl(control, down)
     if NotepadWidget._base.OnControl(self, control, down) then return true end
-    return self.input_handler:OnControl(control, down)
+    
+    if self.input_handler then
+        return self.input_handler:OnControl(control, down)
+    end
+    
+    return false
 end
 
 --[[
@@ -196,7 +238,7 @@ function NotepadWidget:OnRawKey(key, down)
     end
     
     -- Forward to input handler for other shortcuts (like Ctrl+S)
-    if self.input_handler:OnRawKey(key, down) then
+    if self.input_handler and self.input_handler:OnRawKey(key, down) then
         return true
     end
     
@@ -211,7 +253,10 @@ end
     @return (boolean) True if the point is within the widget
 ]]
 function NotepadWidget:IsMouseInWidget(x, y)
-    return self.ui:IsMouseInWidget(x, y)
+    if self.ui then
+        return self.ui:IsMouseInWidget(x, y)
+    end
+    return false
 end
 
 --[[
@@ -220,7 +265,10 @@ end
     @return (boolean) True if the notepad is open
 ]]
 function NotepadWidget:IsOpen()
-    return self.state:IsOpen()
+    if self.state then
+        return self.state:IsOpen()
+    end
+    return false
 end
 
 --[[
@@ -229,8 +277,13 @@ end
 ]]
 function NotepadWidget:OnDestroy()
     -- Clean up state and input handlers
-    self.state:Cleanup()
-    self.input_handler:RemoveClickHandler()
+    if self.state then
+        self.state:Cleanup()
+    end
+    
+    if self.input_handler then
+        self.input_handler:RemoveClickHandler()
+    end
     
     -- Destroy UI components
     if self.save_indicator then self.save_indicator:Kill() end
