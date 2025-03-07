@@ -6,7 +6,6 @@
     and reduce code duplication.
 
     The module handles:
-    - Text editor initialization with standard settings
     - Text width calculation
     - Line splitting and analysis
     - Focus handling for text widgets
@@ -175,7 +174,7 @@ function TextUtils:InitializeEditor(editor, config)
     editor.allow_newline = true
     
     -- Initialize focus handling
-    TextUtils:SetupFocusHandlers(editor)
+    self:SetupFocusHandlers(editor)
 end
 
 return TextUtils

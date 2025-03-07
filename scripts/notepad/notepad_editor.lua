@@ -3,13 +3,12 @@
     
     This module provides the core text editing functionality for the notepad.
     It wraps Don't Starve Together's TextEdit widget with additional features:
-    - Custom key handling (Enter for new lines)
-    - Text manipulation methods
     - Focus management
-    - Future undo/redo support (structure in place)
+    - Text manipulation methods
+    - Scrolling support
     
-    The editor handles all text input and formatting, while delegating
-    storage operations to the parent widget.
+    The editor handles text input and formatting while delegating
+    key handling to EditorKeyHandler and text input processing to TextInputHandler.
 
     Usage:
         local NotepadEditor = require("notepad/notepad_editor")
@@ -20,6 +19,8 @@
 local TextEdit = require "widgets/textedit"
 local Config = require "notepad/config"
 local TextUtils = require "notepad/text_utils"
+local EditorKeyHandler = require "notepad/editor_key_handler"
+local TextInputHandler = require "notepad/text_input_handler"
 
 --[[
     NotepadEditor Class
@@ -46,11 +47,11 @@ local NotepadEditor = Class(function(self, parent, font, font_size)
     self.editor.font = font or DEFAULTFONT
     self.editor.size = font_size or Config.FONT_SIZES.EDITOR
     
-    self:InitializeEditor()
+    -- Initialize specialized handlers
+    self.key_handler = EditorKeyHandler(self)
+    self.text_input_handler = TextInputHandler(self.text_utils)
     
-    -- Initialize undo/redo stacks for future implementation
-    self.undo_stack = {}
-    self.redo_stack = {}
+    self:InitializeEditor()
 end)
 
 --[[
@@ -79,96 +80,29 @@ function NotepadEditor:InitializeEditor()
     
     -- Set up text input handler for automatic line breaking
     function editor:OnTextInput(text)
-        -- Filter out ESC character only when ESC key is actually pressed
-        -- This allows normal "?" input while preventing ESC key issues
-        if TheInput:IsKeyDown(KEY_ESCAPE) then
-            return true
-        end
-        
-        -- Get the editor instance from parent's reference
+        -- Store reference to the editor instance for easier access
         local editor_instance = self.parent.parent.editor
-        if editor_instance and editor_instance.text_utils:HandleTextInput(self, text, Config) then
+        
+        -- Handle the text input using our specialized handler
+        if editor_instance.text_input_handler:HandleTextInput(self, text, Config) then
             editor_instance:ScrollToCursor()
             return true
         end
         return false  -- Don't call base TextEdit.OnTextInput to prevent double input
     end
     
-    -- Set up raw key handler for enter key and future key commands
-    function editor:OnRawKey(key, down)
-        -- Get the editor instance from parent's reference
-        local editor_instance = self.parent.parent.editor
-        if editor_instance then
-            -- Debug logging for key presses
-            print("[Debug] Key pressed:", key, "Down:", down)
-            
-            -- Handle ESC key to prevent text input
-            if key == KEY_ESCAPE and down then
-                -- Let the parent widget handle the ESC key for closing
-                if self.parent and self.parent.parent and self.parent.parent.Close then
-                    self.parent.parent:Close()
-                end
-                return true
-            end
-            
-            -- Handle backspace explicitly
-            if key == KEY_BACKSPACE and down then
-                local current_text = self:GetString()
-                local cursor_pos = self:GetEditCursorPos()
-                if cursor_pos > 0 then
-                    -- Delete char to the left of cursor
-                    local new_text = current_text:sub(1, cursor_pos - 1) .. current_text:sub(cursor_pos + 1)
-                    self:SetString(new_text)
-                    self:SetEditCursorPos(cursor_pos - 1)
-                    editor_instance:ScrollToCursor()
-                    return true
-                end
-                return TextEdit.OnRawKey(self, key, down)
-            end
-            
-            if editor_instance.text_utils:HandleEnterKey(self, key, down) then
-                editor_instance:ScrollToCursor()
-                return true
-            end
-            
-            -- Handle other key commands
-            if editor_instance:HandleKeyCommand(key, down) then
-                editor_instance:ScrollToCursor()
-                return true
-            end
-        end
-        return TextEdit.OnRawKey(self, key, down)
-    end
+    -- Set up key handler for all keyboard input
+    self.key_handler:SetupKeyHandler(editor)
     
     -- Initialize focus handling
     self:SetupFocusHandlers(editor)
 end
 
 --[[
-    Handles special key commands for the editor.
-    
-    @param key (number) The key code being pressed
-    @param down (boolean) Whether the key is being pressed down
-    @return (boolean) True if the key was handled, false otherwise
-]]
-function NotepadEditor:HandleKeyCommand(key, down)
-    -- Handle Enter key for line breaks
-    if down and (key == KEY_ENTER or key == KEY_KP_ENTER) then
-        local text = self:GetText()
-        local cursor_pos = self.editor:GetEditCursorPos()
-        local new_text = text:sub(1, cursor_pos) .. "\n" .. text:sub(cursor_pos + 1)
-        self:SetText(new_text)
-        self.editor:SetEditing(true)
-        self.editor:SetEditCursorPos(cursor_pos + 1)
-        return true
-    end
-    
-    return false
-end
-
---[[
     Sets up focus gain and loss handlers for the editor.
     Manages visual feedback when the editor gains or loses focus.
+    
+    @param editor (TextEdit) The editor widget to set up handlers for
 ]]
 function NotepadEditor:SetupFocusHandlers(editor)
     function editor:OnGainFocus()
@@ -200,8 +134,10 @@ end
     @param text (string) The new text content (optional, defaults to empty string)
 ]]
 function NotepadEditor:SetText(text)
-    -- Future: Add to undo stack before changing text
-    -- self:PushToUndoStack(self:GetText())
+    -- Add to key handler's undo stack before changing text
+    if self.key_handler then
+        self.key_handler:PushToUndoStack(self:GetText())
+    end
     self.editor:SetString(text or "")
 end
 
@@ -210,58 +146,6 @@ end
 ]]
 function NotepadEditor:SetFocus()
     self.editor:SetFocus()
-end
-
---[[
-    Cleans up the editor widget.
-    Should be called when the notepad is being destroyed.
-]]
-function NotepadEditor:Kill()
-    if self.editor then
-        self.editor:Kill()
-        self.editor = nil
-    end
-end
-
---[[ Future Undo/Redo Implementation ]]--
-
---[[
-    Pushes text to the undo stack and clears redo stack.
-    
-    @param text (string) Text state to save for undoing
-]]
-function NotepadEditor:PushToUndoStack(text)
-    table.insert(self.undo_stack, text)
-    -- Clear redo stack when new changes are made
-    self.redo_stack = {}
-end
-
---[[
-    Undoes the last text change if available.
-    Moves current state to redo stack.
-]]
-function NotepadEditor:Undo()
-    if #self.undo_stack > 0 then
-        -- Push current text to redo stack
-        table.insert(self.redo_stack, self:GetText())
-        -- Pop and apply text from undo stack
-        local text = table.remove(self.undo_stack)
-        self.editor:SetString(text)
-    end
-end
-
---[[
-    Redoes the last undone change if available.
-    Moves current state to undo stack.
-]]
-function NotepadEditor:Redo()
-    if #self.redo_stack > 0 then
-        -- Push current text to undo stack
-        table.insert(self.undo_stack, self:GetText())
-        -- Pop and apply text from redo stack
-        local text = table.remove(self.redo_stack)
-        self.editor:SetString(text)
-    end
 end
 
 --[[
@@ -301,6 +185,17 @@ function NotepadEditor:ScrollToCursor()
     
     -- Apply scroll position with smooth animation
     editor:SetScroll(scroll_pos)
+end
+
+--[[
+    Cleans up the editor widget.
+    Should be called when the notepad is being destroyed.
+]]
+function NotepadEditor:Kill()
+    if self.editor then
+        self.editor:Kill()
+        self.editor = nil
+    end
 end
 
 return NotepadEditor

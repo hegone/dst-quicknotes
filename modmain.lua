@@ -62,7 +62,8 @@ local function ToggleNotepad()
         return
     end
     
-    if notepad and notepad.isOpen then
+    -- Use IsOpen() method instead of directly checking isOpen property
+    if notepad and notepad:IsOpen() then
         -- Close existing notepad
         print("[Quick Notes] Closing notepad")
         notepad:Close()
