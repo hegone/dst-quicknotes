@@ -92,9 +92,10 @@ end
     Creates the clickable background that handles focus.
 ]]
 function NotepadUI:InitializeClickableBackground()
+    -- Revert to original transparent background
     self.parent.bg = self.parent.root:AddChild(Image("images/global.xml", "square.tex"))
     self.parent.bg:SetSize(Config.DIMENSIONS.BACKGROUND.WIDTH, Config.DIMENSIONS.BACKGROUND.HEIGHT)
-    self.parent.bg:SetTint(0, 0, 0, 0)  -- Completely transparent
+    self.parent.bg:SetTint(0, 0, 0, 0)  -- Completely transparent as in original
     self.parent.bg:SetClickable(true)
     self.parent.bg.OnMouseButton = function(_, button, down, x, y)
         if button == MOUSEBUTTON_LEFT and down then
@@ -125,7 +126,7 @@ end
     Creates the title bar with background and text.
 ]]
 function NotepadUI:InitializeTitleBar()
-    -- Title background
+    -- Title background - revert to original color
     self.parent.title_bg = self.parent.root:AddChild(Image("images/global.xml", "square.tex"))
     self.parent.title_bg:SetSize(Config.DIMENSIONS.TITLE_BAR.WIDTH, Config.DIMENSIONS.TITLE_BAR.HEIGHT)
     self.parent.title_bg:SetPosition(0, 160)
@@ -174,15 +175,24 @@ function NotepadUI:InitializeCloseButton()
     self.parent.reset_btn = button_container:AddChild(ImageButton("images/global_redux.xml", "close.tex"))
     self.parent.reset_btn:SetPosition(-30, 0)  -- Position to the left of close button
     self.parent.reset_btn:SetScale(0.7)
-    self.parent.reset_btn:SetOnClick(function() self.parent:Reset() end)
+    self.parent.reset_btn:SetOnClick(function() 
+        -- Play sound on reset
+        if TheFrontEnd and TheFrontEnd:GetSound() then
+            TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_negative")
+        end
+        self.parent:Reset() 
+    end)
     self.parent.reset_btn:SetHoverText("Reset Notepad (Ctrl+R)")
     self.parent.reset_btn:SetImageNormalColour(0.7, 0.2, 0.2, 1)  -- Red tint
     self.parent.reset_btn:SetRotation(45)  -- Rotate it to make it look different from the close button
     
-    -- Add close button
+    -- Add close button - removed sound to prevent double sound
     self.parent.close_btn = button_container:AddChild(ImageButton("images/global_redux.xml", "close.tex"))
     self.parent.close_btn:SetScale(0.7)
-    self.parent.close_btn:SetOnClick(function() self.parent:Close() end)
+    self.parent.close_btn:SetOnClick(function() 
+        -- Removed sound here to avoid double sound
+        self.parent:Close() 
+    end)
     self.parent.close_btn:SetHoverText("Close Notepad")
     self.parent.close_btn:SetImageNormalColour(0.2, 0.2, 0.2, 1)  -- Dark gray tint
 end
