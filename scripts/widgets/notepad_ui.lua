@@ -17,6 +17,7 @@ local ImageButton = require "widgets/imagebutton"
 local Text = require "widgets/text"
 local Widget = require "widgets/widget"
 local Config = require "notepad/config"
+local SoundManager = require "notepad/sound_manager"
 
 --[[
     NotepadUI Class
@@ -176,21 +177,19 @@ function NotepadUI:InitializeCloseButton()
     self.parent.reset_btn:SetPosition(-30, 0)  -- Position to the left of close button
     self.parent.reset_btn:SetScale(0.7)
     self.parent.reset_btn:SetOnClick(function() 
-        -- Play sound on reset
-        if TheFrontEnd and TheFrontEnd:GetSound() then
-            TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_negative")
-        end
+        -- Play sound using SoundManager
+        SoundManager:PlaySound(SoundManager.SOUNDS.RESET)
         self.parent:Reset() 
     end)
     self.parent.reset_btn:SetHoverText("Reset Notepad (Ctrl+R)")
     self.parent.reset_btn:SetImageNormalColour(0.7, 0.2, 0.2, 1)  -- Red tint
     self.parent.reset_btn:SetRotation(45)  -- Rotate it to make it look different from the close button
     
-    -- Add close button - removed sound to prevent double sound
+    -- Add close button - use SoundManager for consistent sound effects
     self.parent.close_btn = button_container:AddChild(ImageButton("images/global_redux.xml", "close.tex"))
     self.parent.close_btn:SetScale(0.7)
     self.parent.close_btn:SetOnClick(function() 
-        -- Removed sound here to avoid double sound
+        SoundManager:PlaySound(SoundManager.SOUNDS.CLOSE)
         self.parent:Close() 
     end)
     self.parent.close_btn:SetHoverText("Close Notepad")

@@ -15,6 +15,9 @@
         handler:AddClickHandler()  -- Start handling outside clicks
 ]]
 
+local DraggableWidget = require("notepad/draggable_widget")
+local SoundManager = require("notepad/sound_manager")
+
 --[[
     InputHandler Class
     
@@ -29,12 +32,8 @@ local InputHandler = Class(function(self, widget)
     self.keyboard_handlers = {}           -- Map of control codes to handler functions
     self.click_handler = nil              -- Handler for clicks outside widget
     
-    -- Drag state tracking
-    self.dragging = false                 -- Current drag state
-    self.drag_start_x = 0                 -- Mouse X position when drag started
-    self.drag_start_y = 0                 -- Mouse Y position when drag started
-    self.widget_start_x = 0               -- Widget X position when drag started
-    self.widget_start_y = 0               -- Widget Y position when drag started
+    -- Initialize draggable widget instance for title bar dragging
+    self.dragger = DraggableWidget()
     
     self:SetupKeyboardHandlers()          -- Initialize keyboard shortcuts
 end)
@@ -93,35 +92,10 @@ function InputHandler:OnRawKey(key, down)
     if down and key == KEY_S and TheInput:IsKeyDown(KEY_CTRL) then
         self.widget:SaveNotes()
         -- Play a sound when saving
-        if TheFrontEnd and TheFrontEnd:GetSound() then
-            TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_move")
-        end
+        SoundManager:PlaySound(SoundManager.SOUNDS.SAVE)
         return true
     end
     return false
-end
-
---[[
-    Initiates dragging operation.
-    
-    @param x (number) Starting mouse X position
-    @param y (number) Starting mouse Y position
-    @param widget_pos (table) Widget's current position {x=number, y=number}
-]]
-function InputHandler:StartDragging(x, y, widget_pos)
-    self.dragging = true
-    -- Store initial positions for drag calculations
-    self.drag_start_x = x
-    self.drag_start_y = y
-    self.widget_start_x = widget_pos.x
-    self.widget_start_y = widget_pos.y
-end
-
---[[
-    Stops the current dragging operation.
-]]
-function InputHandler:StopDragging()
-    self.dragging = false
 end
 
 --[[
@@ -130,15 +104,11 @@ end
     @param root (Widget) The root widget being dragged
 ]]
 function InputHandler:UpdateDragging(root)
-    if self.dragging and TheInput:IsMouseDown(MOUSEBUTTON_LEFT) then
+    if self.dragger:IsDragging() and TheInput:IsMouseDown(MOUSEBUTTON_LEFT) then
         local mousepos = TheInput:GetScreenPosition()
-        -- Calculate position delta from drag start
-        local dx = mousepos.x - self.drag_start_x
-        local dy = mousepos.y - self.drag_start_y
-        -- Update widget position
-        root:SetPosition(self.widget_start_x + dx, self.widget_start_y + dy)
+        self.dragger:UpdateDragging(root, mousepos.x, mousepos.y)
     else
-        self.dragging = false
+        self.dragger:StopDragging()
     end
 end
 
@@ -204,11 +174,12 @@ function InputHandler:OnMouseButton(button, down, x, y)
             if math.abs(y - title_pos.y) <= title_h/2 then
                 local mousepos = TheInput:GetScreenPosition()
                 local pos = self.widget.root:GetPosition()
-                self:StartDragging(mousepos.x, mousepos.y, pos)
+                -- Use the DraggableWidget for drag operations
+                self.dragger:StartDragging(mousepos.x, mousepos.y, pos)
                 return true
             end
         else
-            self:StopDragging()
+            self.dragger:StopDragging()
             return false  -- Explicitly return false for consistency
         end
     end

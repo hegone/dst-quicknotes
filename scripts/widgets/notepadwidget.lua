@@ -21,6 +21,7 @@ local InputHandler = require "notepad/input_handler"
 local NotepadEditor = require "notepad/notepad_editor"
 local NotepadUI = require "widgets/notepad_ui"
 local NotepadState = require "widgets/notepad_state"
+local SoundManager = require "notepad/sound_manager"
 local Config = require "notepad/config"
 
 --[[
@@ -94,10 +95,8 @@ function NotepadWidget:OnBecomeActive()
     self:Show()
     self.root:ScaleTo(0, 1, Config.SETTINGS.OPEN_ANIMATION_DURATION)
     
-    -- Play sound when opening
-    if TheFrontEnd and TheFrontEnd:GetSound() then
-        TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/craft_open")
-    end
+    -- Play sound when opening using SoundManager
+    SoundManager:PlaySound(SoundManager.SOUNDS.OPEN)
     
     self.input_handler:AddClickHandler()
     self.state:Activate()
@@ -111,10 +110,8 @@ function NotepadWidget:OnBecomeInactive()
     print("[Quick Notes] NotepadWidget becoming inactive")
     NotepadWidget._base.OnBecomeInactive(self)
     
-    -- Play sound when closing
-    if TheFrontEnd and TheFrontEnd:GetSound() then
-        TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/craft_close")
-    end
+    -- Play sound when closing using SoundManager
+    SoundManager:PlaySound(SoundManager.SOUNDS.CLOSE)
     
     self.input_handler:RemoveClickHandler()
     self:Hide()
@@ -143,10 +140,8 @@ function NotepadWidget:SaveNotes()
     
     if self.data_manager:SaveNotes(content) then
         self.state:ShowSaveIndicator("Saved!")
-        -- Play sound when saving
-        if TheFrontEnd and TheFrontEnd:GetSound() then
-            TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_positive")
-        end
+        -- Play sound when saving using SoundManager
+        SoundManager:PlaySound(SoundManager.SOUNDS.SAVE)
     end
 end
 
@@ -179,6 +174,9 @@ function NotepadWidget:Reset(save_state)
     
     -- Show feedback
     self.state:ShowSaveIndicator("Reset!")
+    
+    -- Play sound when resetting
+    SoundManager:PlaySound(SoundManager.SOUNDS.RESET)
     
     -- Save cleared state if requested
     if save_state ~= false then
