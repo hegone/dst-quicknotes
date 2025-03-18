@@ -32,8 +32,8 @@ Assets = {
     Asset("IMAGE", "images/global.tex"),    -- Global UI elements texture
     Asset("ATLAS", "images/global_redux.xml"),    -- Global redux UI elements atlas
     Asset("IMAGE", "images/global_redux.tex"),    -- Global redux UI elements texture
-    Asset("ATLAS", "modicon.xml"),          -- Mod icon atlas
-    Asset("IMAGE", "modicon.tex"),          -- Mod icon texture
+    Asset("ATLAS", "images/modicon.xml"),
+    Asset("IMAGE", "images/modicon.tex"),
 }
 
 -- Make the notepad widget accessible globally
