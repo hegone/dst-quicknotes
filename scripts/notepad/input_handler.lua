@@ -135,7 +135,7 @@ function InputHandler:AddClickHandler()
                                 math.abs(y - close_pos.y) <= close_h/2
                 
                 -- Close if click is outside notepad and not on title/close button
-                if not self.widget:IsMouseInWidget(x, y) and not in_title and not in_close then
+                if not self.widget.ui:IsMouseInWidget(x, y) and not in_title and not in_close then
                     self.widget:Close()
                     return true
                 end

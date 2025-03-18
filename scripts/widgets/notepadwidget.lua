@@ -219,17 +219,6 @@ function NotepadWidget:OnRawKey(key, down)
 end
 
 --[[
-    Checks if a point is within the widget's bounds.
-    
-    @param x (number) X coordinate to check
-    @param y (number) Y coordinate to check
-    @return (boolean) True if the point is within the widget
-]]
-function NotepadWidget:IsMouseInWidget(x, y)
-    return self.ui:IsMouseInWidget(x, y)
-end
-
---[[
     Checks if the notepad is currently open.
     
     @return (boolean) True if the notepad is open

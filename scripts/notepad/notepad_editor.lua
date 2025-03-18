@@ -21,6 +21,7 @@ local Config = require "notepad/config"
 local TextUtils = require "notepad/text_utils"
 local EditorKeyHandler = require "notepad/editor_key_handler"
 local TextInputHandler = require "notepad/text_input_handler"
+local FocusManager = require "notepad/focus_manager"
 
 --[[
     NotepadEditor Class
@@ -94,27 +95,8 @@ function NotepadEditor:InitializeEditor()
     -- Set up key handler for all keyboard input
     self.key_handler:SetupKeyHandler(editor)
     
-    -- Initialize focus handling
-    self:SetupFocusHandlers(editor)
-end
-
---[[
-    Sets up focus gain and loss handlers for the editor.
-    Manages visual feedback when the editor gains or loses focus.
-    
-    @param editor (TextEdit) The editor widget to set up handlers for
-]]
-function NotepadEditor:SetupFocusHandlers(editor)
-    function editor:OnGainFocus()
-        TextEdit.OnGainFocus(self)
-        self:SetEditing(true)
-        self:SetColour(1, 1, 1, 1)
-    end
-    
-    function editor:OnLoseFocus()
-        TextEdit.OnLoseFocus(self)
-        self:SetColour(1, 1, 1, 1)
-    end
+    -- Initialize focus handling using the FocusManager
+    FocusManager:SetupEditorFocusHandlers(editor, Config.COLORS.EDITOR_TEXT)
 end
 
 --[[ Text Manipulation Methods ]]--

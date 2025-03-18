@@ -19,6 +19,7 @@
 local Text = require "widgets/text"
 local Widget = require "widgets/widget"
 local TextEdit = require "widgets/textedit"
+local FocusManager = require "notepad/focus_manager"
 
 --[[
     TextUtils Class
@@ -171,23 +172,12 @@ end
 
 --[[
     Sets up focus gain and loss handlers for the editor.
-    Manages visual feedback when the editor gains or loses focus.
+    Delegates to the FocusManager.
     
     @param editor (TextEdit) The text editor widget to set up handlers for
 ]]
 function TextUtils:SetupFocusHandlers(editor)
-    function editor:OnGainFocus()
-        TextEdit.OnGainFocus(self)
-        self:SetEditing(true)
-        -- Set text color to white when focused
-        self:SetColour(1, 1, 1, 1)
-    end
-    
-    function editor:OnLoseFocus()
-        TextEdit.OnLoseFocus(self)
-        -- Maintain white color when unfocused for consistency
-        self:SetColour(1, 1, 1, 1)
-    end
+    FocusManager:SetupEditorFocusHandlers(editor)
 end
 
 --[[
@@ -233,8 +223,8 @@ function TextUtils:InitializeEditor(editor, config)
     editor:SetString("")
     editor.allow_newline = true
     
-    -- Initialize focus handling
-    self:SetupFocusHandlers(editor)
+    -- Initialize focus handling using FocusManager
+    FocusManager:SetupEditorFocusHandlers(editor, config.COLORS.EDITOR_TEXT)
 end
 
 --[[
