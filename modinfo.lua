@@ -25,7 +25,7 @@ Keyboard Shortcuts:
 - Enter for new lines]]
 
 author = "Lumen"
-version = "0.2.1"
+version = "0.3.0"
 
 --[[ Compatibility Settings
     These flags determine which game versions can use the mod:
