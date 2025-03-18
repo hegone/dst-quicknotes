@@ -44,8 +44,8 @@ all_clients_require_mod = false
 client_only_mod = true
 
 -- Mod icon configuration
-modicon = "images/modicon.tex"
-icon_atlas = "images/modicon.xml"
+icon = "modicon.tex"
+icon_atlas = "modicon.xml"
 
 --[[ Configuration Options
     These options appear in the mod configuration menu and allow users
