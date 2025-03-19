@@ -34,6 +34,9 @@ local NotepadWidget = Class(Screen, function(self)
     Screen._ctor(self, "NotepadWidget")
     print("[Quick Notes] Creating NotepadWidget")
     
+    -- Initialize position tracking
+    self.position = {x = 0, y = 0}
+    
     -- Initialize core components
     self.data_manager = DataManager()
     self.state = NotepadState(self)
@@ -66,6 +69,20 @@ end)
 ]]
 function NotepadWidget:OnUpdate()
     self.input_handler:UpdateDragging(self.root)
+    
+    -- Update position when dragged
+    if self.root and not self.position_update_pending then
+        local pos = self.root:GetPosition()
+        if pos.x ~= self.position.x or pos.y ~= self.position.y then
+            self.position = {x = pos.x, y = pos.y}
+            
+            -- Throttle position updates to avoid excessive saves
+            self.position_update_pending = true
+            self.inst:DoTaskInTime(1, function()
+                self.position_update_pending = false
+            end)
+        end
+    end
 end
 
 --[[
@@ -93,11 +110,19 @@ function NotepadWidget:OnBecomeActive()
     NotepadWidget._base.OnBecomeActive(self)
     
     self:Show()
+    
+    -- Apply saved position
+    if self.position then
+        self.root:SetPosition(self.position.x, self.position.y)
+    end
+    
+    -- Animate opening
     self.root:ScaleTo(0, 1, Config.SETTINGS.OPEN_ANIMATION_DURATION)
     
-    -- Play sound when opening using SoundManager
+    -- Play sound when opening
     SoundManager:PlaySound(SoundManager.SOUNDS.OPEN)
     
+    -- Set up click handlers and state
     self.input_handler:AddClickHandler()
     self.state:Activate()
 end
@@ -110,9 +135,11 @@ function NotepadWidget:OnBecomeInactive()
     print("[Quick Notes] NotepadWidget becoming inactive")
     NotepadWidget._base.OnBecomeInactive(self)
     
-    -- Play sound when closing using SoundManager
+    -- Play sound when closing
     SoundManager:PlaySound(SoundManager.SOUNDS.CLOSE)
     
+    -- Save notes and clean up
+    self:SaveNotes()
     self.input_handler:RemoveClickHandler()
     self:Hide()
     self.state:Deactivate()
@@ -131,28 +158,48 @@ function NotepadWidget:Close()
 end
 
 --[[
-    Saves the current notes content.
+    Saves the current notes content and position.
 ]]
 function NotepadWidget:SaveNotes()
     if not self.editor then return end
+    
     local content = self.editor:GetText()
     if not content then return end
     
-    if self.data_manager:SaveNotes(content) then
+    -- Update position from root widget
+    if self.root then
+        local pos = self.root:GetPosition()
+        self.position = {x = pos.x, y = pos.y}
+    end
+    
+    -- Save content and position
+    if self.data_manager:SaveNotes(content, self.position) then
         self.state:ShowSaveIndicator("Saved!")
-        -- Play sound when saving using SoundManager
+        -- Play sound when saving
         SoundManager:PlaySound(SoundManager.SOUNDS.SAVE)
     end
 end
 
 --[[
-    Loads saved notes from persistent storage.
+    Loads saved notes and position from persistent storage.
 ]]
 function NotepadWidget:LoadNotes()
-    self.data_manager:LoadNotes(function(success, content)
-        if success and self.editor then
-            self.editor:SetText(content)
+    self.data_manager:LoadNotes(function(success, content, position)
+        if success then
+            -- Load content
+            if self.editor then
+                self.editor:SetText(content)
+            end
+            
+            -- Restore position if available
+            if position then
+                self.position = position
+                if self.root then
+                    self.root:SetPosition(position.x, position.y)
+                end
+            end
         else
+            -- No saved notes found
             if self.editor then
                 self.editor:SetText("")
             end
@@ -169,6 +216,12 @@ end
 function NotepadWidget:Reset(save_state)
     if not self.editor then return end
     
+    -- Before clearing, create a backup
+    local content = self.editor:GetText()
+    if content and #content > 0 then
+        self.data_manager:CreateBackup(content, self.position)
+    end
+    
     -- Clear editor content
     self.editor:SetText("")
     
@@ -181,6 +234,19 @@ function NotepadWidget:Reset(save_state)
     -- Save cleared state if requested
     if save_state ~= false then
         self:SaveNotes()
+    end
+end
+
+--[[
+    Updates the widget position.
+    
+    @param x (number) New X position
+    @param y (number) New Y position
+]]
+function NotepadWidget:UpdatePosition(x, y)
+    self.position = {x = x, y = y}
+    if self.root then
+        self.root:SetPosition(x, y)
     end
 end
 
@@ -232,6 +298,9 @@ end
     Called when the widget is being destroyed.
 ]]
 function NotepadWidget:OnDestroy()
+    -- Save notes one last time
+    self:SaveNotes()
+    
     -- Clean up state and input handlers
     self.state:Cleanup()
     self.input_handler:RemoveClickHandler()
@@ -239,11 +308,7 @@ function NotepadWidget:OnDestroy()
     -- Destroy UI components
     if self.save_indicator then self.save_indicator:Kill() end
     
-    -- Clean up text utils inside editor
-    if self.editor and self.editor.text_utils then
-        self.editor.text_utils:Kill()
-    end
-    
+    -- Clean up editor
     if self.editor then
         self.editor:Kill()
         self.editor = nil
