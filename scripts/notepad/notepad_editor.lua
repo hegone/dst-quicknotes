@@ -116,10 +116,6 @@ end
     @param text (string) The new text content (optional, defaults to empty string)
 ]]
 function NotepadEditor:SetText(text)
-    -- Add to key handler's undo stack before changing text
-    if self.key_handler then
-        self.key_handler:PushToUndoStack(self:GetText())
-    end
     self.editor:SetString(text or "")
 end
 

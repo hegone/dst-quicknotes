@@ -25,9 +25,6 @@ local TextEdit = require "widgets/textedit"
 local EditorKeyHandler = Class(function(self, editor)
     self.editor = editor
     
-    -- Initialize undo/redo stacks
-    self.undo_stack = {}
-    self.redo_stack = {}
 end)
 
 --[[
@@ -79,15 +76,6 @@ function EditorKeyHandler:ProcessKey(widget, key, down)
         return self:HandleEnterKey(widget)
     end
     
-    -- Handle undo/redo shortcuts
-    if down and key == KEY_Z and TheInput:IsKeyDown(KEY_CTRL) then
-        if TheInput:IsKeyDown(KEY_SHIFT) then
-            self:Redo()
-        else
-            self:Undo()
-        end
-        return true
-    end
     
     -- Let original handler process other keys
     return nil
@@ -144,45 +132,5 @@ function EditorKeyHandler:HandleEnterKey(widget)
 end
 
 
---[[ Undo/Redo Implementation ]]--
-
---[[
-    Pushes text to the undo stack and clears redo stack.
-    
-    @param text (string) Text state to save for undoing
-]]
-function EditorKeyHandler:PushToUndoStack(text)
-    table.insert(self.undo_stack, text)
-    -- Clear redo stack when new changes are made
-    self.redo_stack = {}
-end
-
---[[
-    Undoes the last text change if available.
-    Moves current state to redo stack.
-]]
-function EditorKeyHandler:Undo()
-    if #self.undo_stack > 0 then
-        -- Push current text to redo stack
-        table.insert(self.redo_stack, self.editor:GetText())
-        -- Pop and apply text from undo stack
-        local text = table.remove(self.undo_stack)
-        self.editor:SetText(text)
-    end
-end
-
---[[
-    Redoes the last undone change if available.
-    Moves current state to undo stack.
-]]
-function EditorKeyHandler:Redo()
-    if #self.redo_stack > 0 then
-        -- Push current text to undo stack
-        table.insert(self.undo_stack, self.editor:GetText())
-        -- Pop and apply text from redo stack
-        local text = table.remove(self.redo_stack)
-        self.editor:SetText(text)
-    end
-end
 
 return EditorKeyHandler
