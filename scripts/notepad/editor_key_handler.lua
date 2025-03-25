@@ -173,14 +173,40 @@ function EditorKeyHandler:HandleCursorMovement(widget, key)
         end
     elseif key == KEY_HOME then
         -- Fix for Home key: Only move horizontally, never vertically
-        -- Get the exact current line info
-        local line_num, line_start, line_end = self:GetCurrentLineInfo(text, cursor_pos, lines)
         
-        -- Always go to beginning of current line only
-        new_pos = line_start
+        -- Get full text and cursor position for reliable line detection
+        local text_content = widget:GetString() or ""
+        local cursor_position = cursor_pos
         
-        -- Debugging output can be removed in production
-        -- print("[QuickNotes] HOME: cursor_pos=" .. cursor_pos .. ", line_start=" .. line_start)
+        -- Find which line the cursor is on right now - force recalculation
+        local all_lines = self:SplitTextIntoLines(text_content)
+        local position = 0
+        local current_line_index = 1
+        local current_line_start = 0
+        
+        for i, line in ipairs(all_lines) do
+            local line_start = position
+            local line_end = position + #line
+            
+            -- If cursor is in this range, this is our line
+            if cursor_position >= line_start and cursor_position <= line_end then
+                current_line_index = i
+                current_line_start = line_start
+                break
+            end
+            
+            -- Special handling for newline character
+            if i < #all_lines and cursor_position == line_end + 1 then
+                current_line_index = i + 1  -- Next line
+                current_line_start = line_end + 1
+                break
+            end
+            
+            position = line_end + 1  -- +1 for newline
+        end
+        
+        -- Always go to start of current line
+        new_pos = current_line_start
     elseif key == KEY_END then
         -- Fix for End key: Only move horizontally, never vertically
         -- Get the exact current line info
