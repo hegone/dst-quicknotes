@@ -85,6 +85,14 @@ function NotepadEditor:InitializeEditor()
         Config.COLORS.EDITOR_TEXT.b,
         Config.COLORS.EDITOR_TEXT.a
     )
+
+    -- Set cursor color to white for better visibility
+    if editor.SetEditCursorColour then
+        editor:SetEditCursorColour(1, 1, 1, 1)  -- White color (RGBA)
+    elseif editor.inst and editor.inst.TextWidget and editor.inst.TextWidget.SetEditCursorColour then
+        editor.inst.TextWidget:SetEditCursorColour(1, 1, 1, 1)
+    end
+
     editor:SetString("")
     editor.allow_newline = true
     
