@@ -6,6 +6,7 @@
     - Focus management
     - Text manipulation methods
     - Scrolling support
+    - Enhanced cursor navigation
     
     The editor handles text input and formatting while delegating
     key handling to EditorKeyHandler and text input processing to TextInputHandler.
@@ -48,6 +49,14 @@ local NotepadEditor = Class(function(self, parent, font, font_size)
     self.editor.font = font or DEFAULTFONT
     self.editor.size = font_size or Config.FONT_SIZES.EDITOR
     
+    -- Store config reference
+    self.editor.config = Config
+    
+    -- Add selection state to editor for cursor navigation
+    self.editor.selection_active = false
+    self.editor.selection_start = 0
+    self.editor.selection_end = 0
+    
     -- Initialize specialized handlers
     self.key_handler = EditorKeyHandler(self)
     self.text_input_handler = TextInputHandler(self.text_utils)
@@ -79,7 +88,7 @@ function NotepadEditor:InitializeEditor()
     editor:SetString("")
     editor.allow_newline = true
     
-    -- Set up text input handler for automatic line breaking
+    -- Extend OnTextInput to handle selection and line breaking
     function editor:OnTextInput(text)
         -- Store reference to the editor instance for easier access
         local editor_instance = self.parent.parent.editor
@@ -92,11 +101,54 @@ function NotepadEditor:InitializeEditor()
         return false  -- Don't call base TextEdit.OnTextInput to prevent double input
     end
     
+    -- Set up paste handler using the TextInputHandler
+    self.text_input_handler:SetupPasteHandler(editor)
+    
     -- Set up key handler for all keyboard input
     self.key_handler:SetupKeyHandler(editor)
     
+    -- Add direct access to TextEditWidget
+    if editor.inst and editor.inst.TextEditWidget then
+        editor.TextEditWidget = editor.inst.TextEditWidget
+    end
+    
     -- Initialize focus handling using the FocusManager
     FocusManager:SetupEditorFocusHandlers(editor, Config.COLORS.EDITOR_TEXT)
+    
+    -- Add highlighting support - prepare for text selection (upcoming)
+    self:SetupHighlighting()
+end
+
+--[[
+    Sets up text highlighting/selection support.
+    This prepares the foundation for text selection.
+]]
+function NotepadEditor:SetupHighlighting()
+    local editor = self.editor
+    
+    -- Allow showing selection
+    if editor.inst and editor.inst.TextWidget then
+        -- In core DST, TextWidget can highlight text portions
+        -- Here we set up the structure to support it
+        editor.ShowHighlight = function(self, start_pos, end_pos)
+            if self.inst and self.inst.TextWidget and self.inst.TextWidget.SetHighlightRegion then
+                self.inst.TextWidget:SetHighlightRegion(start_pos, end_pos)
+            end
+        end
+        
+        editor.ClearHighlight = function(self)
+            if self.inst and self.inst.TextWidget and self.inst.TextWidget.ClearHighlightRegion then
+                self.inst.TextWidget:ClearHighlightRegion()
+            end
+        end
+    end
+    
+    -- Set up mouse selection handlers
+    -- This is for a future implementation where text can be selected by dragging
+    editor.OnMouseButton = function(self, button, down, x, y)
+        -- Just call base OnMouseButton for now
+        return TextEdit.OnMouseButton(self, button, down, x, y)
+    end
 end
 
 --[[ Text Manipulation Methods ]]--
@@ -117,6 +169,11 @@ end
 ]]
 function NotepadEditor:SetText(text)
     self.editor:SetString(text or "")
+    
+    -- Ensure cursor is at end of text
+    if self.editor.SetEditCursorPos then
+        self.editor:SetEditCursorPos(#(text or ""))
+    end
 end
 
 --[[
@@ -129,6 +186,7 @@ end
 --[[
     Scrolls the editor to ensure the cursor is visible.
     Called after text changes or cursor movement.
+    Uses an improved algorithm similar to ConsoleScreen.
 ]]
 function NotepadEditor:ScrollToCursor()
     local editor = self.editor
@@ -150,16 +208,21 @@ function NotepadEditor:ScrollToCursor()
         end
     end
     
-    -- Calculate scroll position
+    -- Calculate scroll position - improved algorithm
     local line_height = editor.size or 25  -- Use editor's font size for line height
     local visible_lines = Config.DIMENSIONS.EDITOR.HEIGHT / line_height
     local total_lines = #lines
+    local max_lines_to_show = 3  -- How many lines to try to show above and below cursor
     
     -- Ensure we don't divide by zero
     if total_lines < 1 then total_lines = 1 end
     
-    -- Adjust scroll position to show more context below cursor
-    local scroll_pos = math.max(0, math.min(1, (cursor_line - math.floor(visible_lines/3)) / total_lines))
+    -- Calculate target scroll position to center cursor line
+    local ideal_top_line = math.max(1, cursor_line - max_lines_to_show)
+    local scroll_pos = (ideal_top_line - 1) / math.max(1, total_lines - visible_lines)
+    
+    -- Clamp scroll position to valid range
+    scroll_pos = math.max(0, math.min(1, scroll_pos))
     
     -- Apply scroll position with smooth animation
     editor:SetScroll(scroll_pos)
@@ -173,6 +236,11 @@ function NotepadEditor:Kill()
     if self.editor then
         self.editor:Kill()
         self.editor = nil
+    end
+    
+    if self.text_utils then
+        self.text_utils:Kill()
+        self.text_utils = nil
     end
 end
 

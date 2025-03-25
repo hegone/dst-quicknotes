@@ -23,6 +23,16 @@ local TextUtils = require "notepad/text_utils"
 ]]
 local TextInputHandler = Class(function(self, text_utils)
     self.text_utils = text_utils or TextUtils()
+    
+    -- List of invalid characters to filter out
+    self.invalid_chars = {
+        [string.char(8)] = true,    -- Backspace (handled separately)
+        [string.char(22)] = true,   -- Synchronous idle
+        [string.char(27)] = true,   -- ESC
+    }
+    
+    -- Track if we're currently pasting
+    self.pasting = false
 end)
 
 --[[
@@ -38,17 +48,20 @@ function TextInputHandler:HandleTextInput(editor, char, config)
         return false
     end
 
-    -- Filter out ESC key sequences (may show as "?" or other characters)
-    -- Only filter if ESC key is actually being pressed
-    if TheInput:IsKeyDown(KEY_ESCAPE) then
+    -- Filter out control characters
+    if self.invalid_chars[char] then
         return true
     end
-    
-    -- ESC key sequences in terminal environments often start with these codes
-    -- Only check for actual ESC character (byte 27), not "?" character
-    if char:byte(1) == 27 then
-        print("[Quick Notes] Filtered ESC key sequence")
-        return true
+
+    -- Handle control characters that might make it through
+    if char:byte(1) < 32 and char ~= "\n" then
+        -- Allow tab characters for indentation
+        if char:byte(1) == 9 then  -- tab
+            char = "    "  -- Convert to 4 spaces
+        else
+            -- Skip other control characters
+            return true
+        end
     end
     
     -- Handle alternative backspace codes
@@ -56,8 +69,43 @@ function TextInputHandler:HandleTextInput(editor, char, config)
         return self:HandleBackspace(editor)
     end
 
+    -- Handle selection replacement
+    if editor.selection_active and editor.selection_start ~= editor.selection_end then
+        return self:ReplaceSelection(editor, char)
+    end
+
     -- Handle normal character input
     return self:ProcessCharacterInput(editor, char, config)
+end
+
+--[[
+    Replaces the current selection with input text.
+    
+    @param editor (TextEdit) The text editor widget
+    @param char (string) The character to replace selection with
+    @return (boolean) True if handled
+]]
+function TextInputHandler:ReplaceSelection(editor, char)
+    local text = editor:GetString()
+    local start_pos = math.min(editor.selection_start, editor.selection_end)
+    local end_pos = math.max(editor.selection_start, editor.selection_end)
+    
+    -- Replace selection with new character
+    local new_text = text:sub(1, start_pos) .. char .. text:sub(end_pos + 1)
+    editor:SetString(new_text)
+    
+    -- Position cursor after inserted character
+    editor:SetEditCursorPos(start_pos + #char)
+    
+    -- Clear selection
+    editor.selection_active = false
+    
+    -- Notify editor to scroll if needed
+    if editor.parent and editor.parent.ScrollToCursor then
+        editor.parent:ScrollToCursor()
+    end
+    
+    return true
 end
 
 --[[
@@ -68,13 +116,55 @@ end
 ]]
 function TextInputHandler:HandleBackspace(editor)
     local text = editor:GetString() or ""
-    local cursor_pos = editor.GetEditCursorPos and editor:GetEditCursorPos() or #text
+    
+    -- Safely get cursor position
+    local cursor_pos = 0
+    if editor.GetEditCursorPos then
+        cursor_pos = editor:GetEditCursorPos()
+    elseif editor.inst and editor.inst.TextEditWidget then
+        cursor_pos = editor.inst.TextEditWidget:GetEditCursorPos()
+    end
+    
+    -- Handle selection-based deletion if active
+    if editor.selection_active and editor.selection_start ~= editor.selection_end then
+        local start_pos = math.min(editor.selection_start, editor.selection_end)
+        local end_pos = math.max(editor.selection_start, editor.selection_end)
+        
+        local new_text = text:sub(1, start_pos) .. text:sub(end_pos + 1)
+        editor:SetString(new_text)
+        
+        -- Safely set cursor position
+        if editor.SetEditCursorPos then
+            editor:SetEditCursorPos(start_pos)
+        elseif editor.inst and editor.inst.TextEditWidget then
+            editor.inst.TextEditWidget:SetEditCursorPos(start_pos)
+        end
+        
+        -- Clear selection
+        editor.selection_active = false
+        
+        -- Notify editor to scroll if needed
+        if editor.parent and editor.parent.ScrollToCursor then
+            editor.parent:ScrollToCursor()
+        end
+        return true
+    end
+    
     if cursor_pos > 0 then
         local new_text = text:sub(1, cursor_pos - 1) .. text:sub(cursor_pos + 1)
         editor:SetString(new_text)
         editor:SetEditing(true)
+        
+        -- Safely set cursor position
         if editor.SetEditCursorPos then
             editor:SetEditCursorPos(cursor_pos - 1)
+        elseif editor.inst and editor.inst.TextEditWidget then
+            editor.inst.TextEditWidget:SetEditCursorPos(cursor_pos - 1)
+        end
+        
+        -- Notify editor to scroll if needed
+        if editor.parent and editor.parent.ScrollToCursor then
+            editor.parent:ScrollToCursor()
         end
         return true
     end
@@ -91,7 +181,14 @@ end
 ]]
 function TextInputHandler:ProcessCharacterInput(editor, char, config)
     local text = editor:GetString() or ""
-    local cursor_pos = editor.GetEditCursorPos and editor:GetEditCursorPos() or #text
+    
+    -- Safely get cursor position
+    local cursor_pos = 0
+    if editor.GetEditCursorPos then
+        cursor_pos = editor:GetEditCursorPos()
+    elseif editor.inst and editor.inst.TextEditWidget then
+        cursor_pos = editor.inst.TextEditWidget:GetEditCursorPos()
+    end
     
     -- Insert character at cursor position
     local new_text = text:sub(1, cursor_pos) .. char .. text:sub(cursor_pos + 1)
@@ -107,9 +204,48 @@ function TextInputHandler:ProcessCharacterInput(editor, char, config)
     -- Set cursor position if the method exists
     if editor.SetEditCursorPos then
         editor:SetEditCursorPos(new_cursor_pos)
+    elseif editor.inst and editor.inst.TextEditWidget then
+        editor.inst.TextEditWidget:SetEditCursorPos(new_cursor_pos)
+    end
+    
+    -- Notify editor to scroll if needed
+    if editor.parent and editor.parent.ScrollToCursor then
+        editor.parent:ScrollToCursor()
     end
     
     return true
+end
+
+--[[
+    Sets up paste handling, modeling after ConsoleScreen's approach.
+    
+    @param editor (TextEdit) The text editor widget
+]]
+function TextInputHandler:SetupPasteHandler(editor)
+    -- Store original OnRawKey to chain it
+    local original_on_raw_key = editor.OnRawKey
+    
+    editor.OnRawKey = function(widget, key, down)
+        -- Check for paste key combo
+        if down and TheInput:IsPasteKey(key) then
+            self.pasting = true
+            
+            -- Get clipboard data
+            local clipboard = TheSim:GetClipboardData()
+            
+            -- Process the clipboard text character by character
+            for i = 1, #clipboard do
+                local char = clipboard:sub(i, i)
+                self:HandleTextInput(widget, char, editor.config)
+            end
+            
+            self.pasting = false
+            return true
+        end
+        
+        -- Chain to original handler if not paste
+        return original_on_raw_key(widget, key, down)
+    end
 end
 
 --[[
@@ -197,13 +333,31 @@ function TextInputHandler:HandleEnterKey(editor, key, down)
         local text = editor:GetString()
         local cursor_pos = editor.GetEditCursorPos and editor:GetEditCursorPos() or #text
         
-        local new_text = text:sub(1, cursor_pos) .. "\n" .. text:sub(cursor_pos + 1)
-        editor:SetString(new_text)
-        editor:SetEditing(true)
-        
-        if editor.SetEditCursorPos then
+        -- Handle selection replacement
+        if editor.selection_active and editor.selection_start ~= editor.selection_end then
+            local start_pos = math.min(editor.selection_start, editor.selection_end)
+            local end_pos = math.max(editor.selection_start, editor.selection_end)
+            
+            local new_text = text:sub(1, start_pos) .. "\n" .. text:sub(end_pos + 1)
+            editor:SetString(new_text)
+            editor:SetEditCursorPos(start_pos + 1)
+            
+            -- Clear selection
+            editor.selection_active = false
+        else
+            -- Regular enter - insert newline
+            local new_text = text:sub(1, cursor_pos) .. "\n" .. text:sub(cursor_pos + 1)
+            editor:SetString(new_text)
             editor:SetEditCursorPos(cursor_pos + 1)
         end
+        
+        editor:SetEditing(true)
+        
+        -- Notify editor to scroll if needed
+        if editor.parent and editor.parent.ScrollToCursor then
+            editor.parent:ScrollToCursor()
+        end
+        
         return true
     end
     return false
