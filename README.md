@@ -10,10 +10,10 @@ A handy notepad for Don't Starve Together that lets you jot down important infor
 |---------|-------------|
 | 📋 **Persistent Notes** | Your notes stay saved between game sessions and world changes |
 | 🖱️ **Draggable Window** | Move the notepad around by dragging the title bar |
-| ⌨️ **Keyboard Shortcuts** | Intuitive controls for quick access and editing |
+| ⌨️ **Full Keyboard Navigation** | Arrow keys, Home/End, Page Up/Down for efficient editing |
 | 💾 **Auto-Saving** | Automatically saves your notes every 30 seconds |
-| 🎮 **Controller Support** | Full controller compatibility with intuitive navigation (Coming Soon) |
-| 🎨 **Clean Design** | Unobtrusive interface that fits the DST aesthetic (Comming Soon)|
+| 🖋️ **Enhanced Cursor** | White cursor for better visibility in the text editor |
+| 🎨 **Clean Design** | Unobtrusive interface that fits the DST aesthetic |
 
 ## 🔑 Keyboard Shortcuts
 
@@ -24,8 +24,9 @@ A handy notepad for Don't Starve Together that lets you jot down important infor
 | `Ctrl+R` | Reset notepad (clear all text) |
 | `ESC` | Close the notepad |
 | `Enter` | Add new line |
-| `Home/End` | Jump to start/end of line (Coming Soon)|
-| `Page Up/Down` | Navigate through longer notes (Coming Soon)|
+| `Arrow Keys` | Navigate through text |
+| `Home/End` | Jump to start/end of current line |
+| `Page Up/Down` | Navigate 10 lines up/down in longer notes |
 
 ## 💡 Perfect Use Cases
 
@@ -86,15 +87,18 @@ To help diagnose issues, please include your log file:
 
 ## 🔄 Version History
 
-### v0.4.0 (On Going)
-- Cursor navigation through arrow keys
-- Home, End, Page Up, Page Down support
-- Enhanced scroll cursor focus
-- Add visual scroll bar
+### v0.4.0 (Current)
+- Added full keyboard navigation with arrow keys
+- Added Home/End keys to jump to start/end of line
+- Added Page Up/Down support for faster navigation
+- Enhanced cursor visibility with white color
+- Fixed text insertion at cursor position
+- Improved stability when closing/reopening notepad
 
-### v0.3.0 (Current)
+### v0.3.0
 - Added sound when opening/closing notepad
-- Added feature: position persistant notepad
+- Added feature: position persistent notepad
+
 ### v0.2.0
 - Added draggable window functionality
 - Implemented auto-save system
@@ -107,12 +111,13 @@ To help diagnose issues, please include your log file:
 
 ## 🔮 Planned Features
 
-- 📜 Scrollbar for longer notes
+- 📜 Visual scrollbar for longer notes
 - 📑 Multiple pages/tabs for organization
 - 🔍 Search functionality
 - 📋 Copy/paste support
 - 🎨 Customizable themes and appearance
 - 🖋️ Basic text formatting (bold, italic)
+- Pin notepad button
 
 ## 📜 License
 
@@ -121,7 +126,7 @@ This mod is released under the MIT License. See the [LICENSE](LICENSE) file for 
 ## 👏 Credits
 
 - Created by Heegon Kim (Lumen)
-- Thanks to all users!
+- Thanks to all users for your feedback and support!
 - Special thanks to the DST modding community
 
 ---
