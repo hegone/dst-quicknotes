@@ -14,6 +14,8 @@ A handy notepad for Don't Starve Together that lets you jot down important infor
 | 💾 **Auto-Saving** | Automatically saves your notes every 30 seconds |
 | 🖋️ **Enhanced Cursor** | White cursor for better visibility in the text editor |
 | 🎨 **Clean Design** | Unobtrusive interface that fits the DST aesthetic |
+| 🎭 **Customizable Colors** | Personalize text and background colors to suit your preference |
+| 🔍 **Adjustable Transparency** | Control background opacity for better visibility on your mod list |
 
 ## 🔑 Keyboard Shortcuts
 
@@ -49,7 +51,9 @@ A handy notepad for Don't Starve Together that lets you jot down important infor
 The mod can be configured in the mod configuration menu:
 
 - **Toggle Key**: Choose which key opens the notepad (Default: `N`)
-- More customization options coming in future updates!
+- **Text Color**: Select from White, Yellow, Light Blue, Light Green, or Pink
+- **Background Color**: Choose from Dark, Brown, Grey, Blue, or Green
+- **Background Opacity**: Adjust transparency from Solid to Very Transparent
 
 ## 🐛 Reporting Issues
 
@@ -87,7 +91,13 @@ To help diagnose issues, please include your log file:
 
 ## 🔄 Version History
 
-### v0.4.0 (Current)
+### v0.5.0 (Current)
+- Added customizable text colors with 5 options
+- Added customizable background colors with 5 options
+- Added adjustable background transparency
+- Improved mod configuration options
+
+### v0.4.0
 - Added full keyboard navigation with arrow keys
 - Added Home/End keys to jump to start/end of line
 - Added Page Up/Down support for faster navigation
@@ -115,9 +125,9 @@ To help diagnose issues, please include your log file:
 - 📑 Multiple pages/tabs for organization
 - 🔍 Search functionality
 - 📋 Copy/paste support
-- 🎨 Customizable themes and appearance
 - 🖋️ Basic text formatting (bold, italic)
-- Pin notepad button
+- 📌 Pin notepad button
+- 🎭 More theme options and font choices
 
 ## 📜 License
 
