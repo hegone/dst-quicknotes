@@ -378,18 +378,30 @@ function EditorKeyHandler:GetCurrentLineInfo(text, cursor_pos, lines)
         local line_end = pos + #line
         
         -- Check if cursor is in this line
-        if cursor_pos >= line_start and cursor_pos <= line_end then
+        if cursor_pos >= line_start and cursor_pos <= line_end + 1 then
             return i, line_start, line_end
         end
         
-        -- Move to next line
-        pos = line_end + 1  -- +1 for newline character
+        -- Move to next line (include newline character)
+        pos = line_end + 1
     end
     
     -- Default to last line if not found
     local last_line = #lines
-    local last_line_start = #text - #lines[last_line]
+    local last_line_start = 0
     local last_line_end = #text
+    
+    -- Calculate correct position for last line
+    if last_line > 0 then
+        local pos = 0
+        for i = 1, last_line - 1 do
+            if i <= #lines then -- Safety check
+                pos = pos + #lines[i] + 1
+            end
+        end
+        last_line_start = pos
+        last_line_end = pos + #lines[last_line]
+    end
     
     return last_line, last_line_start, last_line_end
 end
@@ -411,14 +423,20 @@ function EditorKeyHandler:GetPositionForLine(text, line_num, column, lines)
     
     -- Move position to start of target line
     for i = 1, line_num - 1 do
-        pos = pos + #lines[i] + 1  -- +1 for newline
+        if i <= #lines then -- Safety check
+            pos = pos + #lines[i] + 1  -- +1 for newline
+        end
     end
     
     -- Add column offset (clamped to line length)
-    local target_line = lines[line_num]
-    local target_column = math.min(column, #target_line)
+    if line_num <= #lines then -- Safety check
+        local target_line = lines[line_num]
+        local target_column = math.min(column, #target_line)
+        pos = pos + target_column
+    end
     
-    return pos + target_column
+    -- Clamp final position to text length
+    return math.min(pos, #text)
 end
 
 return EditorKeyHandler

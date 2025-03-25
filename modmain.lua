@@ -62,19 +62,38 @@ local function ToggleNotepad()
         return
     end
     
-    -- Use IsOpen() method instead of directly checking isOpen property
-    if notepad and notepad:IsOpen() then
-        -- Close existing notepad
-        print("[Quick Notes] Closing notepad")
-        notepad:Close()
-        notepad = nil
-    else
-        -- Create and show new notepad
-        print("[Quick Notes] Creating new notepad")
-        notepad = _G.NotepadWidget()
-        print("[Quick Notes] Opening notepad")
-        _G.TheFrontEnd:PushScreen(notepad)
+    -- Check if notepad exists and is open
+    if notepad then
+        -- Check if the notepad is still valid and has an IsOpen method
+        local is_open = false
+        
+        -- Defensively check if we can call IsOpen
+        if notepad.IsOpen and type(notepad.IsOpen) == "function" then
+            -- Try to check if it's open directly
+            -- This is safer than using pcall which might not be available
+            if notepad.state then
+                is_open = notepad:IsOpen()
+            end
+        end
+        
+        if is_open then
+            -- Close existing notepad
+            print("[Quick Notes] Closing notepad")
+            notepad:Close()
+            return
+        else
+            -- Reset the notepad reference if it exists but isn't open
+            print("[Quick Notes] Notepad exists but is not open, creating new one")
+            notepad = nil
+        end
     end
+    
+    -- If we get here, either notepad was nil, invalid, or closed
+    -- Create and show new notepad
+    print("[Quick Notes] Creating new notepad")
+    notepad = _G.NotepadWidget()
+    print("[Quick Notes] Opening notepad")
+    _G.TheFrontEnd:PushScreen(notepad)
 end
 
 --[[
