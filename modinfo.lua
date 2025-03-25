@@ -15,6 +15,8 @@ Features:
 - Draggable window (drag title bar)
 - Auto-saves every 30 seconds
 - Supports up to 10,000 characters
+- Full keyboard navigation with arrow keys, Home/End, Page Up/Down
+- White cursor for better visibility
 - Click outside to close
 
 Keyboard Shortcuts:
@@ -22,10 +24,13 @@ Keyboard Shortcuts:
 - Ctrl+S to save manually
 - Ctrl+R to reset
 - ESC to close
+- Arrow keys to navigate
+- Home/End to jump to start/end of line
+- Page Up/Down to navigate through longer notes
 - Enter for new lines]]
 
 author = "Lumen"
-version = "0.3.0"
+version = "0.4.0"
 
 --[[ Compatibility Settings
     These flags determine which game versions can use the mod:

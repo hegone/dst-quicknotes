@@ -27,7 +27,7 @@ local SoundManager = {}
 SoundManager.SOUNDS = {
     -- UI feedback sounds
     CLICK = "dontstarve/HUD/click_move",
-    POSITIVE = "dontstarve/HUD/click_positive", 
+    POSITIVE = "dontstarve/HUD/click_move", 
     NEGATIVE = "dontstarve/HUD/click_negative",
     
     -- Widget open/close sounds
@@ -35,7 +35,7 @@ SoundManager.SOUNDS = {
     CLOSE = "dontstarve/HUD/craft_close",
     
     -- Interaction sounds
-    SAVE = "dontstarve/HUD/click_positive",
+    SAVE = "dontstarve/HUD/click_move",
     RESET = "dontstarve/HUD/click_negative"
 }
 
