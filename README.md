@@ -137,7 +137,7 @@ This mod is released under the MIT License. See the [LICENSE](LICENSE) file for 
 
 - Created by Heegon Kim (Lumen)
 - Thanks to all users for your feedback and support!
-- Special thanks to the DST modding community
+- Special thanks to the DST modding community ❤️
 
 ---
 
