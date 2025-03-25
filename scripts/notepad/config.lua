@@ -31,7 +31,7 @@ local BG_COLOR_MAP = {
     GREY = { r = 0.2, g = 0.2, b = 0.23 },
     BLUE = { r = 0.1, g = 0.1, b = 0.25 },
     GREEN = { r = 0.1, g = 0.2, b = 0.15 },
-    PINK = { r = 0.3, g = 0.1, b = 0.2 }
+    PINK = { r = 1.0, g = 0.77, b = 0.83 }
 }
 
 -- Get colors from the user settings
