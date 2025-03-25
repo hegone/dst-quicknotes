@@ -172,13 +172,25 @@ function EditorKeyHandler:HandleCursorMovement(widget, key)
             new_pos = line_end + 1 + math.min(line_pos, #next_line)
         end
     elseif key == KEY_HOME then
-        -- FIXED: Always go to beginning of current line only, no vertical movement
-        -- If already at line start, don't do anything
+        -- Fix for Home key: Only move horizontally, never vertically
+        -- Get the exact current line info
+        local line_num, line_start, line_end = self:GetCurrentLineInfo(text, cursor_pos, lines)
+        
+        -- Always go to beginning of current line only
         new_pos = line_start
+        
+        -- Debugging output can be removed in production
+        -- print("[QuickNotes] HOME: cursor_pos=" .. cursor_pos .. ", line_start=" .. line_start)
     elseif key == KEY_END then
-        -- FIXED: Always go to end of current line only, no vertical movement
-        -- If already at line end, don't do anything
+        -- Fix for End key: Only move horizontally, never vertically
+        -- Get the exact current line info
+        local line_num, line_start, line_end = self:GetCurrentLineInfo(text, cursor_pos, lines)
+        
+        -- Always go to end of current line only
         new_pos = line_end
+        
+        -- Debugging output can be removed in production
+        -- print("[QuickNotes] END: cursor_pos=" .. cursor_pos .. ", line_end=" .. line_end)
     elseif key == KEY_PAGEUP then
         -- First check if already at the first line
         if current_line == 1 then
@@ -422,41 +434,32 @@ function EditorKeyHandler:GetCurrentLineInfo(text, cursor_pos, lines)
     end
     
     local pos = 0
-    local i = 1
     
-    while i <= #lines do
-        local line = lines[i]
-        local line_start = pos
-        local line_end = pos + #line
-        
-        -- If cursor is at the start of this line
-        if cursor_pos == line_start then
-            return i, line_start, line_end
-        end
-        
-        -- If cursor is within or at the end of this line
-        if cursor_pos > line_start and cursor_pos <= line_end then
-            return i, line_start, line_end
-        end
-        
-        -- If cursor is at the newline character after this line
-        if cursor_pos == line_end + 1 and i < #lines then
-            return i, line_start, line_end
-        end
-        
-        -- Move to next line (include newline character)
-        pos = line_end + 1
-        i = i + 1
+    -- Explicitly handle cursor at position 0
+    if cursor_pos == 0 then
+        return 1, 0, #lines[1]
     end
     
-    -- If we reached here, cursor is after the last character
-    -- Return the last line
-    local last_line = #lines
-    local last_line_start = pos - #lines[last_line] - 1
-    if last_line_start < 0 then last_line_start = 0 end
-    local last_line_end = last_line_start + #lines[last_line]
+    for i = 1, #lines do
+        local line_start = pos
+        local line_end = pos + #lines[i]
+        
+        -- Check if cursor is in this line (inclusive of line_start, line_end)
+        if cursor_pos >= line_start and cursor_pos <= line_end then
+            return i, line_start, line_end
+        end
+        
+        -- Check if cursor is at the newline after this line
+        if i < #lines and cursor_pos == line_end + 1 then
+            return i, line_start, line_end
+        end
+        
+        -- Move to next line (add 1 for newline)
+        pos = line_end + 1
+    end
     
-    return last_line, last_line_start, last_line_end
+    -- Cursor is past the end of text - return last line
+    return #lines, pos - #lines[#lines], pos - 1
 end
 
 --[[
