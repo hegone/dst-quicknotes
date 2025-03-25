@@ -35,13 +35,7 @@ local Config = require "notepad/config"
 local NotepadWidget = Class(Screen, function(self)
     Screen._ctor(self, "NotepadWidget")
     print("[Quick Notes] Creating NotepadWidget")
-
-    -- Ensure config is initialized
-    if _G.InitializeConfig and not _G.CONFIG_INITIALIZED then
-        _G.InitializeConfig()
-    end
     
-
     -- Initialize position tracking
     self.position = {x = 0, y = 0}
     
