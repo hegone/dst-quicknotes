@@ -209,14 +209,43 @@ function EditorKeyHandler:HandleCursorMovement(widget, key)
         new_pos = current_line_start
     elseif key == KEY_END then
         -- Fix for End key: Only move horizontally, never vertically
-        -- Get the exact current line info
-        local line_num, line_start, line_end = self:GetCurrentLineInfo(text, cursor_pos, lines)
         
-        -- Always go to end of current line only
-        new_pos = line_end
+        -- Get full text and cursor position for reliable line detection
+        local text_content = widget:GetString() or ""
+        local cursor_position = cursor_pos
         
-        -- Debugging output can be removed in production
-        -- print("[QuickNotes] END: cursor_pos=" .. cursor_pos .. ", line_end=" .. line_end)
+        -- Find which line the cursor is on right now - force recalculation
+        local all_lines = self:SplitTextIntoLines(text_content)
+        local position = 0
+        local current_line_index = 1
+        local current_line_start = 0
+        local current_line_end = 0
+        
+        for i, line in ipairs(all_lines) do
+            local line_start = position
+            local line_end = position + #line
+            
+            -- If cursor is in this range, this is our line
+            if cursor_position >= line_start and cursor_position <= line_end then
+                current_line_index = i
+                current_line_start = line_start
+                current_line_end = line_end
+                break
+            end
+            
+            -- Special handling for newline character
+            if i < #all_lines and cursor_position == line_end + 1 then
+                current_line_index = i + 1  -- Next line
+                current_line_start = line_end + 1
+                current_line_end = line_end + 1 + #all_lines[i+1]
+                break
+            end
+            
+            position = line_end + 1  -- +1 for newline
+        end
+        
+        -- Always go to end of current line
+        new_pos = current_line_end
     elseif key == KEY_PAGEUP then
         -- First check if already at the first line
         if current_line == 1 then
