@@ -59,11 +59,11 @@ flowchart TD
     input_handler -->|Delegates| text_input_handler
     
     %% Visual styling
-    classDef entryPoint fill:#e9967a,stroke:#333,stroke-width:2px
-    classDef core fill:#66cdaa,stroke:#333,stroke-width:2px
-    classDef input fill:#ffa07a,stroke:#333,stroke-width:2px
-    classDef data fill:#87cefa,stroke:#333,stroke-width:2px
-    classDef utility fill:#d8bfd8,stroke:#333,stroke-width:2px
+    classDef entryPoint fill:#f8ad9d,stroke:#333,stroke-width:2px,color:#333
+    classDef core fill:#a8e6cf,stroke:#333,stroke-width:2px,color:#333
+    classDef input fill:#ffcfd2,stroke:#333,stroke-width:2px,color:#333
+    classDef data fill:#b5deff,stroke:#333,stroke-width:2px,color:#333
+    classDef utility fill:#d5aaff,stroke:#333,stroke-width:2px,color:#333
     
     class modmain,modinfo entryPoint
     class notepadwidget,notepad_ui,notepad_editor,notepad_state core
@@ -210,10 +210,10 @@ flowchart LR
     key_handler --> selection
     
     %% Visual styling
-    classDef input fill:#ffcc99,stroke:#333,stroke-width:1px
-    classDef process fill:#99ccff,stroke:#333,stroke-width:1px
-    classDef effect fill:#99ff99,stroke:#333,stroke-width:1px
-    classDef state fill:#cc99ff,stroke:#333,stroke-width:1px
+    classDef input fill:#ffddcc,stroke:#333,stroke-width:1px,color:#333
+    classDef process fill:#cce6ff,stroke:#333,stroke-width:1px,color:#333
+    classDef effect fill:#d4f7d4,stroke:#333,stroke-width:1px,color:#333
+    classDef state fill:#e6ccff,stroke:#333,stroke-width:1px,color:#333
     
     class keypress,typing,navigation input
     class raw_input,text_input,input_filter,key_handler process
@@ -292,12 +292,12 @@ flowchart TD
     deserialize --"Success"--> content
     
     %% Visual styling
-    classDef actions fill:#ffcc99,stroke:#333,stroke-width:1px
-    classDef events fill:#99ccff,stroke:#333,stroke-width:1px
-    classDef widget fill:#99ff99,stroke:#333,stroke-width:1px
-    classDef manager fill:#cc99ff,stroke:#333,stroke-width:1px
-    classDef storage fill:#ffff99,stroke:#333,stroke-width:1px
-    classDef loading fill:#ff9999,stroke:#333,stroke-width:1px
+    classDef actions fill:#ffdecc,stroke:#333,stroke-width:1px,color:#333
+    classDef events fill:#cce5ff,stroke:#333,stroke-width:1px,color:#333
+    classDef widget fill:#d4f7d4,stroke:#333,stroke-width:1px,color:#333
+    classDef manager fill:#e6d8ff,stroke:#333,stroke-width:1px,color:#333
+    classDef storage fill:#fff2cc,stroke:#333,stroke-width:1px,color:#333
+    classDef loading fill:#ffd9d9,stroke:#333,stroke-width:1px,color:#333
     
     class type,save,close actions
     class timer,world_save,game_exit events
@@ -325,7 +325,7 @@ flowchart TD
         BGShadow["Background Shadow\n(Visual Depth)"]
         Frame["Frame\n(Border)"]
         TitleBar["Title Bar\n(Draggable)"]
-        TitleText["Title Text\n(\"Quick Notes\")"]
+        TitleText["Title Text\n(Quick Notes)"]
         CloseBtn["Close Button\n(X)"]
         ResetBtn["Reset Button\n(Rotated X)"]
         SaveIndicator["Save Indicator\n(Feedback)"]
@@ -342,20 +342,21 @@ flowchart TD
     Root --> BGShadow
     Root --> Frame
     Root --> TitleBar
-    TitleBar --> TitleText
     Root --> EditorWidget
     Root --> CloseBtn
     Root --> ResetBtn
     Root --> SaveIndicator
     
+    TitleBar --> TitleText
+    
     EditorWidget --> TextEdit
     EditorWidget --> InputHandlers
     
     %% Visual styling
-    classDef base fill:#ffcccc,stroke:#333,stroke-width:1px
-    classDef main fill:#ccffcc,stroke:#333,stroke-width:1px
-    classDef ui fill:#ccccff,stroke:#333,stroke-width:1px
-    classDef editor fill:#ffffcc,stroke:#333,stroke-width:1px
+    classDef base fill:#f8d7da,stroke:#333,stroke-width:1px,color:#721c24
+    classDef main fill:#d4edda,stroke:#333,stroke-width:1px,color:#155724
+    classDef ui fill:#cce5ff,stroke:#333,stroke-width:1px,color:#004085
+    classDef editor fill:#fff3cd,stroke:#333,stroke-width:1px,color:#856404
     
     class Screen base
     class NotepadWidget main
@@ -412,10 +413,10 @@ flowchart LR
     update --> scroll
     
     %% Visual styling
-    classDef keys fill:#ffcccc,stroke:#333,stroke-width:1px
-    classDef handler fill:#ccffcc,stroke:#333,stroke-width:1px
-    classDef lines fill:#ccccff,stroke:#333,stroke-width:1px
-    classDef cursor fill:#ffffcc,stroke:#333,stroke-width:1px
+    classDef keys fill:#ffd6cc,stroke:#333,stroke-width:1px,color:#333
+    classDef handler fill:#d4f7d4,stroke:#333,stroke-width:1px,color:#333
+    classDef lines fill:#ccdbff,stroke:#333,stroke-width:1px,color:#333
+    classDef cursor fill:#ffefc9,stroke:#333,stroke-width:1px,color:#333
     
     class arrows,homeend,pagekeys keys
     class process,move handler
