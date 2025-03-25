@@ -15,7 +15,7 @@ A handy notepad for Don't Starve Together that lets you jot down important infor
 | 🖋️ **Enhanced Cursor** | White cursor for better visibility in the text editor |
 | 🎨 **Clean Design** | Unobtrusive interface that fits the DST aesthetic |
 | 🎭 **Customizable Colors** | Personalize text and background colors to suit your preference |
-| 🔍 **Adjustable Transparency** | Control background opacity for better visibility during gameplay |
+| 🔍 **Adjustable Transparency** | Control background opacity for better visibility on your mod list |
 
 ## 🔑 Keyboard Shortcuts
 
