@@ -189,7 +189,7 @@ function NotepadUI:InitializeCloseButton()
     self.parent.close_btn = button_container:AddChild(ImageButton("images/global_redux.xml", "close.tex"))
     self.parent.close_btn:SetScale(0.7)
     self.parent.close_btn:SetOnClick(function() 
-        SoundManager:PlaySound(SoundManager.SOUNDS.CLOSE)
+        -- SoundManager:PlaySound(SoundManager.SOUNDS.CLOSE)  Removed: Sound is played in OnBecomeInactive
         self.parent:Close() 
     end)
     self.parent.close_btn:SetHoverText("Close Notepad")
