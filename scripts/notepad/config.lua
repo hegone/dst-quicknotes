@@ -8,13 +8,9 @@
 
     Usage:
         local config = require("notepad/config")
+        -- Initialization is now handled by calling config.UpdateConfig(modConfigData)
         local editor_width = config.DIMENSIONS.EDITOR.WIDTH
 ]]
-
--- Configuration will be set by modmain.lua
-local TEXT_COLOR = "WHITE"
-local BG_COLOR = "DARK" 
-local BG_OPACITY = 0.7
 
 -- Color mapping tables for user-selected colors
 local TEXT_COLOR_MAP = {
@@ -34,76 +30,78 @@ local BG_COLOR_MAP = {
     PINK = { r = 1.0, g = 0.77, b = 0.83 }
 }
 
--- Get colors from the user settings
-local function GetUserTextColor()
-    return TEXT_COLOR_MAP[TEXT_COLOR] or TEXT_COLOR_MAP.WHITE
-end
-
-local function GetUserBgColor()
-    local color = BG_COLOR_MAP[BG_COLOR] or BG_COLOR_MAP.DARK
-    return { r = color.r, g = color.g, b = color.b, a = BG_OPACITY }
-end
-
 -- Font sizes for different UI elements
 -- All sizes are in game units
 local FONT_SIZES = {
-    TITLE = 30,           -- Title bar text size
-    EDITOR = 25,          -- Main editor text size
-    SAVE_INDICATOR = 20   -- Size of the "Saved" indicator text
+    TITLE = 30,          -- Title bar text size
+    EDITOR = 25,         -- Main editor text size
+    SAVE_INDICATOR = 20  -- Size of the "Saved" indicator text
 }
 
 -- Widget dimensions for all UI components
 -- All dimensions are in game units
 local DIMENSIONS = {
     SHADOW = {
-        WIDTH = 520,      -- Outer shadow width
-        HEIGHT = 420      -- Outer shadow height
+        WIDTH = 520,     -- Outer shadow width
+        HEIGHT = 420     -- Outer shadow height
     },
     BACKGROUND = {
-        WIDTH = 500,      -- Main background panel width
-        HEIGHT = 400      -- Main background panel height
+        WIDTH = 500,     -- Main background panel width
+        HEIGHT = 400     -- Main background panel height
     },
     FRAME = {
-        WIDTH = 510,      -- Decorative frame width
-        HEIGHT = 410      -- Decorative frame height
+        WIDTH = 510,     -- Decorative frame width
+        HEIGHT = 410     -- Decorative frame height
     },
     TITLE_BAR = {
-        WIDTH = 510,      -- Title bar width (matches frame)
-        HEIGHT = 45       -- Title bar height
+        WIDTH = 510,     -- Title bar width (matches frame)
+        HEIGHT = 45      -- Title bar height
     },
     EDITOR = {
-        WIDTH = 450,      -- Text input area width
-        HEIGHT = 300      -- Text input area height
+        WIDTH = 450,     -- Text input area width
+        HEIGHT = 300     -- Text input area height
     }
 }
 
 -- Colors and transparency settings for UI elements
 -- Colors use RGBA format (red, green, blue, alpha)
 -- Values range from 0 to 1
+-- NOTE: These are initialized with defaults and updated by UpdateConfig
 local COLORS = {
     SHADOW_TINT = { r = 0, g = 0, b = 0, a = 0.2 },        -- Outer shadow color
-    FRAME_TINT = GetUserBgColor(),                         -- Frame border color
-    TITLE_BG_TINT = GetUserBgColor(),                      -- Title bar background
-    TITLE_TEXT = GetUserTextColor(),                       -- Title text color
-    EDITOR_TEXT = GetUserTextColor(),                      -- Main editor text color
+    FRAME_TINT = { r = 0.1, g = 0.1, b = 0.1, a = 0.7 },   -- Default Dark, 0.7 opacity
+    TITLE_BG_TINT = { r = 0.1, g = 0.1, b = 0.1, a = 1.0 },-- Default Dark, 1.0 opacity (transparent)
+    TITLE_TEXT = { r = 1, g = 1, b = 1, a = 1 },           -- Default White
+    EDITOR_TEXT = { r = 1, g = 1, b = 1, a = 1 },          -- Default White
     SAVE_INDICATOR = { r = 0.5, g = 1, b = 0.5, a = 1 }    -- "Saved" indicator color
 }
 
 -- Behavioral settings and limits
 local SETTINGS = {
-    TEXT_LENGTH_LIMIT = 10000,            -- Maximum characters allowed in editor
-    AUTO_SAVE_INTERVAL = 30,              -- Time between auto-saves (seconds)
-    SAVE_INDICATOR_DURATION = 1,          -- How long "Saved" indicator shows (seconds)
-    FOCUS_DELAY = 0.1,                    -- Delay before focusing editor (seconds)
-    OPEN_ANIMATION_DURATION = 0.2,        -- Widget open animation time (seconds)
-    MAX_LINE_WIDTH = 420                  -- Maximum line width in pixels before forcing newline
+    TEXT_LENGTH_LIMIT = 10000,           -- Maximum characters allowed in editor
+    AUTO_SAVE_INTERVAL = 30,             -- Time between auto-saves (seconds)
+    SAVE_INDICATOR_DURATION = 1,         -- How long "Saved" indicator shows (seconds)
+    FOCUS_DELAY = 0.1,                   -- Delay before focusing editor (seconds)
+    OPEN_ANIMATION_DURATION = 0.2,       -- Widget open animation time (seconds)
+    MAX_LINE_WIDTH = 420                 -- Maximum line width in pixels before forcing newline
 }
 
 -- Function to update configuration with user settings
-local function UpdateConfig(text_color, bg_color, bg_opacity)
-    TEXT_COLOR = text_color or TEXT_COLOR
-    BG_COLOR = bg_color or BG_COLOR
-    BG_OPACITY = bg_opacity or BG_OPACITY
+-- Should be called once from modmain after loading mod config data
+local function UpdateConfig(modConfigData)
+    local text_color_key = modConfigData.TEXT_COLOR or "WHITE"
+    local bg_color_key = modConfigData.BG_COLOR or "DARK"
+    local bg_opacity_val = modConfigData.BG_OPACITY or 0.7
+
+    -- Helper functions using the passed config data
+    local function GetUserTextColor()
+        return TEXT_COLOR_MAP[text_color_key] or TEXT_COLOR_MAP.WHITE
+    end
+
+    local function GetUserBgColor()
+        local color = BG_COLOR_MAP[bg_color_key] or BG_COLOR_MAP.DARK
+        return { r = color.r, g = color.g, b = color.b, a = bg_opacity_val }
+    end
     
     -- Update colors based on new settings
     COLORS.FRAME_TINT = GetUserBgColor()
@@ -112,7 +110,7 @@ local function UpdateConfig(text_color, bg_color, bg_opacity)
     COLORS.EDITOR_TEXT = GetUserTextColor()
 end
 
--- Export all configuration constants
+-- Export all configuration constants and the UpdateConfig function
 return {
     FONT_SIZES = FONT_SIZES,
     DIMENSIONS = DIMENSIONS,

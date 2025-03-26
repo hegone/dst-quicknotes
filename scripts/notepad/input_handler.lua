@@ -75,30 +75,6 @@ function InputHandler:OnControl(control, down)
 end
 
 --[[
-    Handles raw key events for keyboard shortcuts.
-    
-    @param key (number) The key code
-    @param down (boolean) Whether the key is being pressed down
-    @return (boolean) True if the key was handled
-]]
-function InputHandler:OnRawKey(key, down)
-    -- Handle Escape key to close the notepad
-    if down and key == KEY_ESCAPE then
-        self.widget:Close()
-        return true
-    end
-    
-    -- Handle Ctrl+S to save
-    if down and key == KEY_S and TheInput:IsKeyDown(KEY_CTRL) then
-        self.widget:SaveNotes()
-        -- Play a sound when saving
-        SoundManager:PlaySound(SoundManager.SOUNDS.SAVE)
-        return true
-    end
-    return false
-end
-
---[[
     Updates widget position during dragging.
     
     @param root (Widget) The root widget being dragged

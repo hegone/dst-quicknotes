@@ -31,23 +31,17 @@ local BG_OPACITY = GetModConfigData("BG_OPACITY")
     These assets are used for UI elements like buttons and frames.
 ]]
 Assets = {
-    Asset("ATLAS", "images/global.xml"),    -- Global UI elements atlas
-    Asset("IMAGE", "images/global.tex"),    -- Global UI elements texture
-    Asset("ATLAS", "images/global_redux.xml"),    -- Global redux UI elements atlas
-    Asset("IMAGE", "images/global_redux.tex"),    -- Global redux UI elements texture
+    Asset("ATLAS", "images/global.xml"),      -- Global UI elements atlas
+    Asset("IMAGE", "images/global.tex"),      -- Global UI elements texture
+    Asset("ATLAS", "images/global_redux.xml"),      -- Global redux UI elements atlas
+    Asset("IMAGE", "images/global_redux.tex"),      -- Global redux UI elements texture
     Asset("ATLAS", "modicon.xml"),
     Asset("IMAGE", "modicon.tex"),
 }
 
--- Load configuration module and update it with user settings
-_G.CONFIG_INITIALIZED = false
-_G.InitializeConfig = function()
-    if not _G.CONFIG_INITIALIZED then
-        local Config = require "notepad/config"
-        Config.UpdateConfig(TEXT_COLOR, BG_COLOR, BG_OPACITY)
-        _G.CONFIG_INITIALIZED = true
-    end
-end
+-- Load and initialize configuration module
+local Config = require "notepad/config"
+Config.UpdateConfig({ TEXT_COLOR = TEXT_COLOR, BG_COLOR = BG_COLOR, BG_OPACITY = BG_OPACITY })
 
 -- Make the notepad widget accessible globally
 _G.NotepadWidget = require "widgets/notepadwidget"
@@ -68,21 +62,18 @@ local notepad = nil
 ]]
 local function ToggleNotepad()
     print("[Quick Notes] Toggle Notepad called, key pressed:", TOGGLE_KEY)
-    
-    -- Initialize config before creating notepad
-    _G.InitializeConfig()
-    
+   
     -- Safety check: ensure player and HUD exist
     if not _G.ThePlayer or not _G.ThePlayer.HUD then
         print("[Quick Notes] No player or HUD found")
         return
     end
-    
+   
     -- Check if notepad exists and is open
     if notepad then
         -- Check if the notepad is still valid and has an IsOpen method
         local is_open = false
-        
+       
         -- Defensively check if we can call IsOpen
         if notepad.IsOpen and type(notepad.IsOpen) == "function" then
             -- Try to check if it's open directly
@@ -91,7 +82,7 @@ local function ToggleNotepad()
                 is_open = notepad:IsOpen()
             end
         end
-        
+       
         if is_open then
             -- Close existing notepad
             print("[Quick Notes] Closing notepad")
@@ -103,7 +94,7 @@ local function ToggleNotepad()
             notepad = nil
         end
     end
-    
+   
     -- If we get here, either notepad was nil, invalid, or closed
     -- Create and show new notepad
     print("[Quick Notes] Creating new notepad")
