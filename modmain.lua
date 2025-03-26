@@ -20,6 +20,9 @@ local require = _G.require
 
 -- Load user configuration
 local TOGGLE_KEY = GetModConfigData("TOGGLE_KEY")
+local TEXT_COLOR = GetModConfigData("TEXT_COLOR")
+local BG_COLOR = GetModConfigData("BG_COLOR")
+local BG_OPACITY = GetModConfigData("BG_OPACITY")
 
 --[[
     Asset Registration
@@ -35,6 +38,16 @@ Assets = {
     Asset("ATLAS", "modicon.xml"),
     Asset("IMAGE", "modicon.tex"),
 }
+
+-- Load configuration module and update it with user settings
+_G.CONFIG_INITIALIZED = false
+_G.InitializeConfig = function()
+    if not _G.CONFIG_INITIALIZED then
+        local Config = require "notepad/config"
+        Config.UpdateConfig(TEXT_COLOR, BG_COLOR, BG_OPACITY)
+        _G.CONFIG_INITIALIZED = true
+    end
+end
 
 -- Make the notepad widget accessible globally
 _G.NotepadWidget = require "widgets/notepadwidget"
@@ -55,6 +68,9 @@ local notepad = nil
 ]]
 local function ToggleNotepad()
     print("[Quick Notes] Toggle Notepad called, key pressed:", TOGGLE_KEY)
+    
+    -- Initialize config before creating notepad
+    _G.InitializeConfig()
     
     -- Safety check: ensure player and HUD exist
     if not _G.ThePlayer or not _G.ThePlayer.HUD then

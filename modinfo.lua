@@ -17,6 +17,8 @@ Features:
 - Supports up to 10,000 characters
 - Full keyboard navigation with arrow keys, Home/End, Page Up/Down
 - White cursor for better visibility
+- Customizable text color and background
+- Adjustable background transparency
 - Click outside to close
 
 Keyboard Shortcuts:
@@ -30,7 +32,7 @@ Keyboard Shortcuts:
 - Enter for new lines]]
 
 author = "Lumen"
-version = "0.4.0"
+version = "0.5.0"
 
 --[[ Compatibility Settings
     These flags determine which game versions can use the mod:
@@ -73,5 +75,44 @@ configuration_options = {
             {description = "P", data = "KEY_P"},
         },
         default = "KEY_N",           -- Default key binding
+    },
+    {
+        name = "TEXT_COLOR",
+        label = "Text Color",
+        hover = "Change the color of the notepad text",
+        options = {
+            {description = "White", data = "WHITE"}, 
+            {description = "Yellow", data = "YELLOW"},
+            {description = "Light Blue", data = "LIGHT_BLUE"},
+            {description = "Light Green", data = "LIGHT_GREEN"},
+            {description = "Pink", data = "PINK"},
+        },
+        default = "WHITE",
+    },
+    {
+        name = "BG_COLOR",
+        label = "Background Color",
+        hover = "Change the background color of the notepad",
+        options = {
+            {description = "Dark", data = "DARK"},
+            {description = "Brown", data = "BROWN"},
+            {description = "Grey", data = "GREY"},
+            {description = "Blue", data = "BLUE"},
+            {description = "Green", data = "GREEN"},
+            {description = "Pink", data = "PINK"},
+        },
+        default = "DARK",
+    },
+    {
+        name = "BG_OPACITY",
+        label = "Background Opacity",
+        hover = "Adjust the transparency of the notepad background",
+        options = {
+            {description = "Solid", data = 0.7},
+            {description = "Semi-Transparent", data = 0.5},
+            {description = "More Transparent", data = 0.3},
+            {description = "Very Transparent", data = 0.1},
+        },
+        default = 0.7,
     }
 }
