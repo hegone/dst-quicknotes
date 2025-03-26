@@ -85,6 +85,23 @@ function EditorKeyHandler:ProcessKey(widget, key, down)
     if not down then
         return nil
     end
+
+    -- Handle global shortcuts even when editor is focused
+    -- Ctrl+S: Save
+    if key == KEY_S and TheInput:IsKeyDown(KEY_CTRL) then
+        if widget.parent and widget.parent.parent and widget.parent.parent.SaveNotes then
+            widget.parent.parent:SaveNotes()
+            return true
+        end
+    end
+    -- Ctrl+R: Reset
+    if key == KEY_R and TheInput:IsKeyDown(KEY_CTRL) then
+            if widget.parent and widget.parent.parent and widget.parent.parent.Reset then
+           widget.parent.parent:Reset()
+            return true
+        end
+    end
+
     
     -- Handle backspace explicitly
     if key == KEY_BACKSPACE then

@@ -36,12 +36,6 @@ local NotepadWidget = Class(Screen, function(self)
     Screen._ctor(self, "NotepadWidget")
     print("[Quick Notes] Creating NotepadWidget")
 
-    -- Ensure config is initialized
-    if _G.InitializeConfig and not _G.CONFIG_INITIALIZED then
-        _G.InitializeConfig()
-    end
-    
-
     -- Initialize position tracking
     self.position = {x = 0, y = 0}
     
@@ -89,6 +83,15 @@ function NotepadWidget:SetupShortcuts()
         end
         
         -- Add new shortcut handlers
+
+        -- NOTE: Base Screen:OnRawKey seems to handle ESC closing by default if not consumed
+        -- We explicitly handle it here for clarity and to ensure it works even if base changes.
+        -- However, base handler might be sufficient. Let's keep explicit ESC for now.
+        if key == KEY_ESCAPE then
+            self:Close()
+            return true
+        end
+
         if down then
             -- CTRL+A for select all
             if key == KEY_A and TheInput:IsKeyDown(KEY_CTRL) then
@@ -110,9 +113,14 @@ function NotepadWidget:SetupShortcuts()
                 end
             end
             
-            -- Handle ESC key directly like ConsoleScreen
-            if key == KEY_ESCAPE then
-                self:Close()
+            -- CTRL+S for save
+            if key == KEY_S and TheInput:IsKeyDown(KEY_CTRL) then
+                self:SaveNotes()
+                return true
+            end
+            -- CTRL+R for reset
+            if key == KEY_R and TheInput:IsKeyDown(KEY_CTRL) then
+                self:Reset()
                 return true
             end
         end
