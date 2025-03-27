@@ -1,3 +1,4 @@
+-- scripts/notepad/editor_key_handler.lua
 --[[
     Editor Key Handler Module for DST Quick Notes
     
@@ -47,6 +48,7 @@ function EditorKeyHandler:SetupKeyHandler(text_edit)
     
     -- Replace with our custom handler
     text_edit.OnRawKey = function(widget, key, down)
+        -- Use self from the outer scope (the EditorKeyHandler instance)
         local result = self:ProcessKey(widget, key, down)
         if result ~= nil then
             return result
@@ -118,7 +120,7 @@ function EditorKeyHandler:ProcessKey(widget, key, down)
        end
     end
 
-    -- MODIFICATION: Check Delete key *before* HandleCursorMovement
+    -- Check Delete key *before* HandleCursorMovement
     if key == KEY_DELETE then
         return self:HandleDelete(widget) -- Call new handler
     end
@@ -130,7 +132,7 @@ function EditorKeyHandler:ProcessKey(widget, key, down)
 
     -- Handle Enter key for line breaks
     if key == KEY_ENTER or key == KEY_KP_ENTER then
-        return self:HandleEnterKey(widget)
+        return self:HandleEnterKey(widget) -- This line caused the crash, HandleEnterKey is restored below
     end
 
     -- Handle cursor movement and selection keys
@@ -243,13 +245,13 @@ function EditorKeyHandler:HandleCursorMovement(widget, key)
         self.selection_end = cursor_pos
     -- Clear selection if shift isn't pressed AND we are moving cursor (not just pressing shift)
     elseif not selecting and self.selection_active then
-         -- Check if it's a movement key that should clear selection
-         if key == KEY_LEFT or key == KEY_RIGHT or key == KEY_UP or key == KEY_DOWN or 
-            key == KEY_HOME or key == KEY_END or key == KEY_PAGEUP or key == KEY_PAGEDOWN then
-            self.selection_active = false
-            -- Reset selection visual if editor supports it
-            if widget.ClearHighlight then widget:ClearHighlight() end
-         end
+       -- Check if it's a movement key that should clear selection
+       if key == KEY_LEFT or key == KEY_RIGHT or key == KEY_UP or key == KEY_DOWN or 
+          key == KEY_HOME or key == KEY_END or key == KEY_PAGEUP or key == KEY_PAGEDOWN then
+          self.selection_active = false
+          -- Reset selection visual if editor supports it
+          if widget.ClearHighlight then widget:ClearHighlight() end
+       end
     end
     
     local new_pos = cursor_pos
@@ -374,7 +376,12 @@ function EditorKeyHandler:HandleCursorMovement(widget, key)
     if selecting then
         self.selection_end = new_pos
         -- Apply visual highlighting if editor supports it
+        -- NOTE: This still includes the diagnostic SetHighlightColour line from the previous step
+        -- We know this didn't work, but leaving it for now until the highlighting is properly addressed.
         if widget.ShowHighlight then
+             if widget.inst and widget.inst.TextWidget and widget.inst.TextWidget.SetHighlightColour then
+                  widget.inst.TextWidget:SetHighlightColour(0, 0.5, 1, 1) -- Set highlight to blue (RGBA)
+             end
             widget:ShowHighlight(math.min(self.selection_start, self.selection_end), math.max(self.selection_start, self.selection_end))
         end
     end
@@ -407,18 +414,15 @@ function EditorKeyHandler:HandleBackspace(widget)
 
     local new_cursor_pos = cursor_pos
     local new_text = current_text
+    local selection_was_active = self.selection_active and self.selection_start ~= self.selection_end
 
     -- Handle selection-based deletion if active
-    if self.selection_active and self.selection_start ~= self.selection_end then
+    if selection_was_active then
         local start_pos = math.min(self.selection_start, self.selection_end)
         local end_pos = math.max(self.selection_start, self.selection_end)
 
         new_text = current_text:sub(1, start_pos) .. current_text:sub(end_pos + 1)
         new_cursor_pos = start_pos
-
-        -- MODIFICATION: Clear selection state *after* successful operation is determined
-        -- self.selection_active = false
-        -- if widget.ClearHighlight then widget:ClearHighlight() end
 
     -- Handle normal backspace if cursor is not at the beginning
     elseif cursor_pos > 0 then
@@ -440,8 +444,8 @@ function EditorKeyHandler:HandleBackspace(widget)
             widget.inst.TextEditWidget:SetEditCursorPos(new_cursor_pos)
         end
 
-        -- MODIFICATION: Clear selection state here if it was active
-        if self.selection_active and self.selection_start ~= self.selection_end then
+        -- Clear selection state here if it was active
+        if selection_was_active then
              self.selection_active = false
              if widget.ClearHighlight then widget:ClearHighlight() end
         end
@@ -457,7 +461,7 @@ function EditorKeyHandler:HandleBackspace(widget)
 end
 
 
--- Handles delete key press.
+--[[ Handles delete key press. ]]
 function EditorKeyHandler:HandleDelete(widget)
     local current_text = widget:GetString() or ""
 
@@ -471,17 +475,15 @@ function EditorKeyHandler:HandleDelete(widget)
 
     local new_cursor_pos = cursor_pos
     local new_text = current_text
+    local selection_was_active = self.selection_active and self.selection_start ~= self.selection_end
 
     -- Handle selection-based deletion if active
-    if self.selection_active and self.selection_start ~= self.selection_end then
+    if selection_was_active then
         local start_pos = math.min(self.selection_start, self.selection_end)
         local end_pos = math.max(self.selection_start, self.selection_end)
 
         new_text = current_text:sub(1, start_pos) .. current_text:sub(end_pos + 1)
         new_cursor_pos = start_pos -- Cursor stays at the start of the deleted selection
-
-        -- Clear selection state after successful operation is determined
-        -- Handled below
 
     -- Handle normal delete if cursor is not at the end
     elseif cursor_pos < #current_text then
@@ -504,7 +506,7 @@ function EditorKeyHandler:HandleDelete(widget)
         end
 
         -- Clear selection state here if it was active
-        if self.selection_active and self.selection_start ~= self.selection_end then
+        if selection_was_active then
              self.selection_active = false
              if widget.ClearHighlight then widget:ClearHighlight() end
         end
@@ -519,18 +521,41 @@ function EditorKeyHandler:HandleDelete(widget)
     return false
 end
 
+--[[ RESTORED FUNCTION ]]
+-- Handles enter key press for line breaks.
+function EditorKeyHandler:HandleEnterKey(widget)
+    local text = widget:GetString() or ""
+    local cursor_pos = 0
+    if widget.GetEditCursorPos then cursor_pos = widget:GetEditCursorPos()
+    elseif widget.inst and widget.inst.TextEditWidget then cursor_pos = widget.inst.TextEditWidget:GetEditCursorPos() end
+
+    local new_text
+    local new_cursor_pos
+    local selection_was_active = self.selection_active and self.selection_start ~= self.selection_end
+
+    if selection_was_active then
+        local start_pos = math.min(self.selection_start, self.selection_end)
+        local end_pos = math.max(self.selection_start, self.selection_end)
+        new_text = text:sub(1, start_pos) .. "\n" .. text:sub(end_pos + 1)
+        new_cursor_pos = start_pos + 1
+    else
+        new_text = text:sub(1, cursor_pos) .. "\n" .. text:sub(cursor_pos + 1)
+        new_cursor_pos = cursor_pos + 1
+    end
+
+    widget:SetString(new_text)
+    if widget.SetEditCursorPos then widget:SetEditCursorPos(new_cursor_pos)
+    elseif widget.inst and widget.inst.TextEditWidget then widget.inst.TextEditWidget:SetEditCursorPos(new_cursor_pos) end
+
+    if selection_was_active then self.selection_active = false; if widget.ClearHighlight then widget:ClearHighlight() end end
+
+    widget:SetEditing(true) -- May not be needed if SetString sets editing state
+    if self.editor and self.editor.ScrollToCursor then self.editor:ScrollToCursor() end
+    return true
+end
 
 
---[[
-    Gets information about the line containing the cursor.
-    
-    @param text (string) The full text
-    @param cursor_pos (number) Current cursor position
-    @param lines (table) Lines array from SplitTextIntoLines (can be nil, will recalculate)
-    @return (number, number, number) Line number (1-based), line start position (0-based), line end position (0-based, inclusive)
-]]
---[[ MODIFIED FUNCTION ]]
--- Gets information about the line containing the cursor.
+--[[ Gets information about the line containing the cursor. ]]
 -- Returns line number (1-based), line start position (0-based), line end position (0-based, inclusive of last char).
 function EditorKeyHandler:GetCurrentLineInfo(text, cursor_pos, lines)
     lines = lines or self:SplitTextIntoLines(text)
@@ -555,8 +580,7 @@ function EditorKeyHandler:GetCurrentLineInfo(text, cursor_pos, lines)
             if i == #lines or text:sub(line_end + 1, line_end + 1) ~= "\n" then
                  return i, line_start, line_end
             -- If it's exactly at the end of content AND followed by a newline,
-            -- we need to check if the cursor logically belongs to the start of the next line.
-            -- Let the next check handle this.
+            -- let Case 3 handle it by checking for the newline position.
             end
         end
 
@@ -582,39 +606,5 @@ function EditorKeyHandler:GetCurrentLineInfo(text, cursor_pos, lines)
     return last_line_idx, last_line_start, last_line_end
 end
 
-
---[[
-    Gets cursor position for a specific line and column.
-    DEPRECATED / NOT USED by current navigation logic, kept for potential future use.
-    
-    @param text (string) The full text
-    @param line_num (number) Target line number
-    @param column (number) Target column in the line
-    @param lines (table) Lines array from SplitTextIntoLines
-    @return (number) Cursor position
-]]
--- function EditorKeyHandler:GetPositionForLine(text, line_num, column, lines)
---     -- Clamp line number
---     line_num = math.max(1, math.min(#lines, line_num))
-    
---     local pos = 0
-    
---     -- Move position to start of target line
---     for i = 1, line_num - 1 do
---         if i <= #lines then -- Safety check
---             pos = pos + #lines[i] + 1  -- +1 for newline
---         end
---     end
-    
---     -- Add column offset (clamped to line length)
---     if line_num <= #lines then -- Safety check
---         local target_line = lines[line_num]
---         local target_column = math.min(column, #target_line)
---         pos = pos + target_column
---     end
-    
---     -- Clamp final position to text length
---     return math.min(pos, #text)
--- end
 
 return EditorKeyHandler
