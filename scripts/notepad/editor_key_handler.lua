@@ -70,9 +70,12 @@ function EditorKeyHandler:SetupKeyHandler(text_edit)
     text_edit.validrawkeys[KEY_RIGHT] = true
     text_edit.validrawkeys[KEY_UP] = true
     text_edit.validrawkeys[KEY_DOWN] = true
-    -- Ensure Ctrl is recognized
     text_edit.validrawkeys[KEY_CTRL] = true
-    text_edit.validrawkeys[KEY_SHIFT] = true -- Ensure Shift is recognized for selection
+    text_edit.validrawkeys[KEY_SHIFT] = true
+    text_edit.validrawkeys[KEY_BACKSPACE] = true -- Ensure backspace is valid
+    text_edit.validrawkeys[KEY_DELETE] = true    -- Add delete key
+    text_edit.validrawkeys[KEY_ENTER] = true     -- Ensure enter is valid
+    text_edit.validrawkeys[KEY_KP_ENTER] = true  -- Ensure keypad enter is valid
 end
 
 --[[
@@ -115,22 +118,27 @@ function EditorKeyHandler:ProcessKey(widget, key, down)
        end
     end
 
+    -- MODIFICATION: Check Delete key *before* HandleCursorMovement
+    if key == KEY_DELETE then
+        return self:HandleDelete(widget) -- Call new handler
+    end
+
     -- Handle backspace explicitly
     if key == KEY_BACKSPACE then
         return self:HandleBackspace(widget)
     end
-    
+
     -- Handle Enter key for line breaks
     if key == KEY_ENTER or key == KEY_KP_ENTER then
         return self:HandleEnterKey(widget)
     end
-    
+
     -- Handle cursor movement and selection keys
     if self:HandleCursorMovement(widget, key) then
         return true
     end
-    
-    -- Let original handler process other keys (like character input via OnTextInput)
+
+    -- Let original handler process other keys
     return nil
 end
 
@@ -177,6 +185,32 @@ function EditorKeyHandler:FindNextWordPosition(text, current_pos)
     return pos
 end
 
+--[[
+    Splits text into lines for cursor navigation.
+    
+    @param text (string) The text to split
+    @return (table) Array of line strings
+]]
+function EditorKeyHandler:SplitTextIntoLines(text)
+    if not text or text == "" then
+        return {""}
+    end
+    
+    local lines = {}
+    local start = 1
+    while true do
+        local nl_pos = string.find(text, "\n", start, true) -- Find next newline, literal search
+        if nl_pos then
+            table.insert(lines, text:sub(start, nl_pos - 1))
+            start = nl_pos + 1
+        else
+            table.insert(lines, text:sub(start)) -- Add the rest of the text
+            break
+        end
+    end
+    -- If the text ends with a newline, find adds an empty string at the end, which is correct.
+    return lines
+end
 
 --[[ MODIFIED FUNCTION ]]
 -- Handles cursor movement keys (arrows, home, end, page up/down, Ctrl+Arrows).
@@ -362,7 +396,7 @@ end
 ]]
 function EditorKeyHandler:HandleBackspace(widget)
     local current_text = widget:GetString() or ""
-    
+
     -- Safely get cursor position
     local cursor_pos = 0
     if widget.GetEditCursorPos then
@@ -370,7 +404,7 @@ function EditorKeyHandler:HandleBackspace(widget)
     elseif widget.inst and widget.inst.TextEditWidget then
         cursor_pos = widget.inst.TextEditWidget:GetEditCursorPos()
     end
-    
+
     local new_cursor_pos = cursor_pos
     local new_text = current_text
 
@@ -378,13 +412,13 @@ function EditorKeyHandler:HandleBackspace(widget)
     if self.selection_active and self.selection_start ~= self.selection_end then
         local start_pos = math.min(self.selection_start, self.selection_end)
         local end_pos = math.max(self.selection_start, self.selection_end)
-        
+
         new_text = current_text:sub(1, start_pos) .. current_text:sub(end_pos + 1)
         new_cursor_pos = start_pos
-        
-        -- Clear selection state
-        self.selection_active = false
-        if widget.ClearHighlight then widget:ClearHighlight() end
+
+        -- MODIFICATION: Clear selection state *after* successful operation is determined
+        -- self.selection_active = false
+        -- if widget.ClearHighlight then widget:ClearHighlight() end
 
     -- Handle normal backspace if cursor is not at the beginning
     elseif cursor_pos > 0 then
@@ -394,37 +428,39 @@ function EditorKeyHandler:HandleBackspace(widget)
         -- At beginning of text and no selection, do nothing
         return false
     end
-    
+
     -- Update text and cursor if changes were made
     if new_text ~= current_text then
         widget:SetString(new_text)
-        
+
         -- Safely set cursor position
         if widget.SetEditCursorPos then
             widget:SetEditCursorPos(new_cursor_pos)
         elseif widget.inst and widget.inst.TextEditWidget then
             widget.inst.TextEditWidget:SetEditCursorPos(new_cursor_pos)
         end
-        
+
+        -- MODIFICATION: Clear selection state here if it was active
+        if self.selection_active and self.selection_start ~= self.selection_end then
+             self.selection_active = false
+             if widget.ClearHighlight then widget:ClearHighlight() end
+        end
+
         -- Notify editor to scroll if needed
         if self.editor and self.editor.ScrollToCursor then
             self.editor:ScrollToCursor()
         end
         return true
     end
-    
+
     return false
 end
 
---[[
-    Handles enter key press for line breaks.
-    
-    @param widget (TextEdit) The text widget
-    @return (boolean) Always returns true
-]]
-function EditorKeyHandler:HandleEnterKey(widget)
-    local text = widget:GetString() or ""
-    
+
+-- Handles delete key press.
+function EditorKeyHandler:HandleDelete(widget)
+    local current_text = widget:GetString() or ""
+
     -- Safely get cursor position
     local cursor_pos = 0
     if widget.GetEditCursorPos then
@@ -432,73 +468,58 @@ function EditorKeyHandler:HandleEnterKey(widget)
     elseif widget.inst and widget.inst.TextEditWidget then
         cursor_pos = widget.inst.TextEditWidget:GetEditCursorPos()
     end
-    
-    local new_text
-    local new_cursor_pos
 
-    -- Handle selection replacement if active
+    local new_cursor_pos = cursor_pos
+    local new_text = current_text
+
+    -- Handle selection-based deletion if active
     if self.selection_active and self.selection_start ~= self.selection_end then
         local start_pos = math.min(self.selection_start, self.selection_end)
         local end_pos = math.max(self.selection_start, self.selection_end)
-        
-        new_text = text:sub(1, start_pos) .. "\n" .. text:sub(end_pos + 1)
-        new_cursor_pos = start_pos + 1
-        
-        -- Clear selection state
-        self.selection_active = false
-        if widget.ClearHighlight then widget:ClearHighlight() end
+
+        new_text = current_text:sub(1, start_pos) .. current_text:sub(end_pos + 1)
+        new_cursor_pos = start_pos -- Cursor stays at the start of the deleted selection
+
+        -- Clear selection state after successful operation is determined
+        -- Handled below
+
+    -- Handle normal delete if cursor is not at the end
+    elseif cursor_pos < #current_text then
+        new_text = current_text:sub(1, cursor_pos) .. current_text:sub(cursor_pos + 2)
+        new_cursor_pos = cursor_pos -- Cursor position doesn't change
     else
-        -- Insert a newline at cursor position
-        new_text = text:sub(1, cursor_pos) .. "\n" .. text:sub(cursor_pos + 1)
-        new_cursor_pos = cursor_pos + 1
+        -- At end of text and no selection, do nothing
+        return false
     end
-    
-    widget:SetString(new_text)
-    
-    -- Safely set cursor position
-    if widget.SetEditCursorPos then
-        widget:SetEditCursorPos(new_cursor_pos)
-    elseif widget.inst and widget.inst.TextEditWidget then
-        widget.inst.TextEditWidget:SetEditCursorPos(new_cursor_pos)
+
+    -- Update text and cursor if changes were made
+    if new_text ~= current_text then
+        widget:SetString(new_text)
+
+        -- Safely set cursor position
+        if widget.SetEditCursorPos then
+            widget:SetEditCursorPos(new_cursor_pos)
+        elseif widget.inst and widget.inst.TextEditWidget then
+            widget.inst.TextEditWidget:SetEditCursorPos(new_cursor_pos)
+        end
+
+        -- Clear selection state here if it was active
+        if self.selection_active and self.selection_start ~= self.selection_end then
+             self.selection_active = false
+             if widget.ClearHighlight then widget:ClearHighlight() end
+        end
+
+        -- Notify editor to scroll if needed
+        if self.editor and self.editor.ScrollToCursor then
+            self.editor:ScrollToCursor()
+        end
+        return true
     end
-    
-    -- Maintain editing state (might be redundant if SetString does this)
-    widget:SetEditing(true)
-    
-    -- Notify editor to scroll if needed
-    if self.editor and self.editor.ScrollToCursor then
-        self.editor:ScrollToCursor()
-    end
-    
-    return true
+
+    return false
 end
 
---[[
-    Splits text into lines for cursor navigation.
-    
-    @param text (string) The text to split
-    @return (table) Array of line strings
-]]
-function EditorKeyHandler:SplitTextIntoLines(text)
-    if not text or text == "" then
-        return {""}
-    end
-    
-    local lines = {}
-    local start = 1
-    while true do
-        local nl_pos = string.find(text, "\n", start, true) -- Find next newline, literal search
-        if nl_pos then
-            table.insert(lines, text:sub(start, nl_pos - 1))
-            start = nl_pos + 1
-        else
-            table.insert(lines, text:sub(start)) -- Add the rest of the text
-            break
-        end
-    end
-    -- If the text ends with a newline, find adds an empty string at the end, which is correct.
-    return lines
-end
+
 
 --[[
     Gets information about the line containing the cursor.
