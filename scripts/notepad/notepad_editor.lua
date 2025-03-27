@@ -124,42 +124,8 @@ function NotepadEditor:InitializeEditor()
     -- Initialize focus handling using the FocusManager
     FocusManager:SetupEditorFocusHandlers(editor, Config.COLORS.EDITOR_TEXT)
     
-    -- REMOVED: Call to non-functional SetupHighlighting
-    -- self:SetupHighlighting()
+    -- Note: Call to self:SetupHighlighting() was removed as the function was non-functional and removed.
 end
-
---[[ REMOVED: Non-functional highlighting setup
-function NotepadEditor:SetupHighlighting()
-    local editor = self.editor
-    
-    -- Allow showing selection
-    -- This code attempted to define ShowHighlight/ClearHighlight based on
-    -- underlying TextWidget methods (SetHighlightRegion/ClearHighlightRegion)
-    -- which were found not to exist on the standard DST TextWidget.
-    --[[
-    if editor.inst and editor.inst.TextWidget then
-        editor.ShowHighlight = function(self, start_pos, end_pos)
-            if self.inst and self.inst.TextWidget and self.inst.TextWidget.SetHighlightRegion then
-                self.inst.TextWidget:SetHighlightRegion(start_pos, end_pos)
-            end
-        end
-        
-        editor.ClearHighlight = function(self)
-            if self.inst and self.inst.TextWidget and self.inst.TextWidget.ClearHighlightRegion then
-                self.inst.TextWidget:ClearHighlightRegion()
-            end
-        end
-    end
-    ]]
-    -- Set up mouse selection handlers (Placeholder for potential future implementation)
-    --[[
-    editor.OnMouseButton = function(self, button, down, x, y)
-        -- Just call base OnMouseButton for now
-        return TextEdit.OnMouseButton(self, button, down, x, y)
-    end
-    ]]
-end
---]]
 
 --[[ Text Manipulation Methods ]]--
 
@@ -218,7 +184,9 @@ function NotepadEditor:ScrollToCursor()
     -- Get cursor position and editor dimensions
     local cursor_pos = editor:GetEditCursorPos()
     local text = editor:GetString() or ""
-    local lines = self.text_utils:SplitByLine(text) -- Use text_utils instance for consistency
+    -- Use text_utils instance for consistency. Ensure text_utils exists.
+    if not self.text_utils then return end 
+    local lines = self.text_utils:SplitByLine(text) 
     
     -- Calculate cursor line
     local cursor_line = 1
@@ -256,7 +224,14 @@ function NotepadEditor:ScrollToCursor()
     end
 
     -- Determine the desired top visible line to keep cursor in view
-    local current_scroll_fraction = editor.scroll_pos or 0 -- Assuming scroll_pos is stored/accessible, otherwise need GetScroll()
+    -- Attempt to get current scroll position if possible, otherwise assume 0
+    local current_scroll_fraction = 0 
+    if editor.GetScroll then -- Check if GetScroll exists
+        current_scroll_fraction = editor:GetScroll()
+    elseif editor.scroll_pos then -- Fallback to stored value if GetScroll doesn't exist
+        current_scroll_fraction = editor.scroll_pos
+    end
+    
     local current_top_line = math.floor(current_scroll_fraction * scrollable_lines) + 1
 
     local new_top_line = current_top_line
@@ -278,7 +253,7 @@ function NotepadEditor:ScrollToCursor()
 
     -- Apply scroll position (SetScroll expects fraction 0-1)
     editor:SetScroll(scroll_pos)
-    editor.scroll_pos = scroll_pos -- Store it if needed elsewhere, though GetScroll() would be better if available
+    editor.scroll_pos = scroll_pos -- Store it again, maybe useful if GetScroll doesn't exist
 end
 
 --[[
