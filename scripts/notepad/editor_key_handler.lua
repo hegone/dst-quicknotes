@@ -14,6 +14,11 @@
 
 local TextEdit = require "widgets/textedit"
 
+-- Helper function to check if a character is whitespace
+local function IsWhitespace(char)
+    return char == " " or char == "\n" or char == "\t" -- Added tab just in case
+end
+
 --[[
     EditorKeyHandler Class
     
@@ -47,7 +52,12 @@ function EditorKeyHandler:SetupKeyHandler(text_edit)
             return result
         end
         -- Fall back to original handler if we didn't handle the key
-        return original_on_raw_key(widget, key, down)
+        if original_on_raw_key then
+            return original_on_raw_key(widget, key, down)
+        else
+            -- If original doesn't exist, provide default TextEdit behavior as fallback
+            return TextEdit.OnRawKey(widget, key, down)
+        end
     end
     
     -- Setup validrawkeys for special keys, mirroring ConsoleScreen approach
@@ -60,6 +70,9 @@ function EditorKeyHandler:SetupKeyHandler(text_edit)
     text_edit.validrawkeys[KEY_RIGHT] = true
     text_edit.validrawkeys[KEY_UP] = true
     text_edit.validrawkeys[KEY_DOWN] = true
+    -- Ensure Ctrl is recognized
+    text_edit.validrawkeys[KEY_CTRL] = true
+    text_edit.validrawkeys[KEY_SHIFT] = true -- Ensure Shift is recognized for selection
 end
 
 --[[
@@ -96,13 +109,12 @@ function EditorKeyHandler:ProcessKey(widget, key, down)
     end
     -- Ctrl+R: Reset
     if key == KEY_R and TheInput:IsKeyDown(KEY_CTRL) then
-            if widget.parent and widget.parent.parent and widget.parent.parent.Reset then
+        if widget.parent and widget.parent.parent and widget.parent.parent.Reset then
            widget.parent.parent:Reset()
-            return true
-        end
+           return true
+       end
     end
 
-    
     -- Handle backspace explicitly
     if key == KEY_BACKSPACE then
         return self:HandleBackspace(widget)
@@ -118,24 +130,63 @@ function EditorKeyHandler:ProcessKey(widget, key, down)
         return true
     end
     
-    -- Let original handler process other keys
+    -- Let original handler process other keys (like character input via OnTextInput)
     return nil
 end
 
---[[
-    Handles cursor movement keys (arrows, home, end, page up/down).
-    
-    @param widget (TextEdit) The text widget
-    @param key (number) The key code
-    @return (boolean) True if handled, false otherwise
-]]
+--[[ NEW HELPER FUNCTION ]]
+-- Finds the position of the start of the previous word.
+function EditorKeyHandler:FindPreviousWordPosition(text, current_pos)
+    if current_pos <= 0 then return 0 end
+
+    local pos = current_pos - 1 -- Start checking from the character before the cursor
+
+    -- 1. Skip backwards over any initial whitespace right before the cursor
+    while pos >= 0 and IsWhitespace(text:sub(pos + 1, pos + 1)) do
+        pos = pos - 1
+    end
+
+    -- 2. Skip backwards over the non-whitespace characters of the word
+    while pos >= 0 and not IsWhitespace(text:sub(pos + 1, pos + 1)) do
+        pos = pos - 1
+    end
+
+    -- The new position is after the last character skipped (which was either whitespace or start of text)
+    return pos + 1
+end
+
+--[[ NEW HELPER FUNCTION ]]
+-- Finds the position of the start of the next word.
+function EditorKeyHandler:FindNextWordPosition(text, current_pos)
+    local text_len = #text
+    if current_pos >= text_len then return text_len end
+
+    local pos = current_pos
+
+    -- 1. Skip forwards over the non-whitespace characters of the current word (if any)
+    while pos < text_len and not IsWhitespace(text:sub(pos + 1, pos + 1)) do
+        pos = pos + 1
+    end
+
+    -- 2. Skip forwards over any whitespace characters after the word (or where the cursor started)
+    while pos < text_len and IsWhitespace(text:sub(pos + 1, pos + 1)) do
+        pos = pos + 1
+    end
+
+    -- The new position is at the start of the next word (or end of text)
+    return pos
+end
+
+
+--[[ MODIFIED FUNCTION ]]
+-- Handles cursor movement keys (arrows, home, end, page up/down, Ctrl+Arrows).
 function EditorKeyHandler:HandleCursorMovement(widget, key)
     -- Ensure the widget has the needed methods
     if not widget.GetString then
         return false
     end
     
-    local text = widget:GetString()
+    local text = widget:GetString() or "" -- Ensure text is not nil
     
     -- Safely get cursor position
     local cursor_pos = 0
@@ -156,169 +207,128 @@ function EditorKeyHandler:HandleCursorMovement(widget, key)
         self.selection_active = true
         self.selection_start = cursor_pos
         self.selection_end = cursor_pos
-    -- Clear selection if shift isn't pressed and selection is active
+    -- Clear selection if shift isn't pressed AND we are moving cursor (not just pressing shift)
     elseif not selecting and self.selection_active then
-        self.selection_active = false
+         -- Check if it's a movement key that should clear selection
+         if key == KEY_LEFT or key == KEY_RIGHT or key == KEY_UP or key == KEY_DOWN or 
+            key == KEY_HOME or key == KEY_END or key == KEY_PAGEUP or key == KEY_PAGEDOWN then
+            self.selection_active = false
+            -- Reset selection visual if editor supports it
+            if widget.ClearHighlight then widget:ClearHighlight() end
+         end
     end
     
     local new_pos = cursor_pos
+    local handled = false -- Flag to track if a specific key logic was executed
+
+    -- Check for Ctrl modifier for word jumps
+    if TheInput:IsKeyDown(KEY_CTRL) then
+        if key == KEY_LEFT then
+            new_pos = self:FindPreviousWordPosition(text, cursor_pos)
+            handled = true
+        elseif key == KEY_RIGHT then
+            new_pos = self:FindNextWordPosition(text, cursor_pos)
+            handled = true
+        end
+        -- NOTE: Ctrl+Up/Down could be added later for paragraph jump or scroll without moving cursor
+    end
+
+    -- If Ctrl wasn't held or didn't handle the key, use standard navigation
+    if not handled then
+        if key == KEY_LEFT then
+            if cursor_pos > 0 then
+                new_pos = cursor_pos - 1
+            end
+            handled = true
+        elseif key == KEY_RIGHT then
+            if cursor_pos < #text then
+                new_pos = cursor_pos + 1
+            end
+            handled = true
+        elseif key == KEY_UP then
+            if current_line > 1 then
+                -- Calculate previous line's start safely
+                local prev_line_start = 0
+                for i = 1, current_line - 2 do
+                    if i <= #lines then -- Check bounds
+                        prev_line_start = prev_line_start + #lines[i] + 1
+                    end
+                end
+                -- Use previously calculated line_start for current line column
+                local current_column = cursor_pos - line_start
+                local prev_line_text = lines[current_line - 1] or ""
+                new_pos = prev_line_start + math.min(current_column, #prev_line_text)
+            end
+            handled = true
+        elseif key == KEY_DOWN then
+             if current_line < #lines then
+                 local current_column = cursor_pos - line_start
+                 -- line_end is the end of the current line content
+                 local next_line_start = line_end + 1 -- Position after the current line's newline
+                 local next_line_text = lines[current_line + 1] or ""
+                 new_pos = next_line_start + math.min(current_column, #next_line_text)
+            end
+            handled = true
+        elseif key == KEY_HOME then
+            -- Recalculate line info reliably on Home/End press
+            local home_line_num, home_line_start, _ = self:GetCurrentLineInfo(text, cursor_pos, lines)
+            new_pos = home_line_start
+            handled = true
+        elseif key == KEY_END then
+            -- Recalculate line info reliably on Home/End press
+            local end_line_num, _, end_line_end = self:GetCurrentLineInfo(text, cursor_pos, lines)
+            new_pos = end_line_end
+            handled = true
+        elseif key == KEY_PAGEUP then
+            if current_line == 1 then
+                new_pos = 0
+            else
+                local target_line = math.max(1, current_line - 10)
+                local current_column = cursor_pos - line_start
+                local target_line_pos = 0
+                for i = 1, target_line - 1 do
+                    if i <= #lines then
+                        target_line_pos = target_line_pos + #lines[i] + 1
+                    end
+                end
+                local target_line_text = lines[target_line] or ""
+                local target_column = math.min(current_column, #target_line_text)
+                new_pos = target_line_pos + target_column
+            end
+            handled = true
+        elseif key == KEY_PAGEDOWN then
+             if current_line == #lines then
+                 new_pos = #text
+             else
+                 local target_line = math.min(#lines, current_line + 10)
+                 local current_column = cursor_pos - line_start
+                 local target_line_pos = 0
+                 for i = 1, target_line - 1 do
+                     if i <= #lines then
+                         target_line_pos = target_line_pos + #lines[i] + 1
+                     end
+                 end
+                 local target_line_text = lines[target_line] or ""
+                 local target_column = math.min(current_column, #target_line_text)
+                 new_pos = target_line_pos + target_column
+            end
+            handled = true
+        end
+    end
     
-    -- Handle different navigation keys
-    if key == KEY_LEFT then
-        -- Move cursor left one character
-        if cursor_pos > 0 then
-            new_pos = cursor_pos - 1
-        end
-    elseif key == KEY_RIGHT then
-        -- Move cursor right one character
-        if cursor_pos < #text then
-            new_pos = cursor_pos + 1
-        end
-    elseif key == KEY_UP then
-        -- Move cursor up one line
-        if current_line > 1 then
-            local prev_line = lines[current_line - 1]
-            local line_pos = cursor_pos - line_start
-            new_pos = line_start - #prev_line - 1 + math.min(line_pos, #prev_line)
-        end
-    elseif key == KEY_DOWN then
-        -- Move cursor down one line
-        if current_line < #lines then
-            local next_line = lines[current_line + 1]
-            local line_pos = cursor_pos - line_start
-            new_pos = line_end + 1 + math.min(line_pos, #next_line)
-        end
-    elseif key == KEY_HOME then
-        -- Fix for Home key: Only move horizontally, never vertically
-        
-        -- Get full text and cursor position for reliable line detection
-        local text_content = widget:GetString() or ""
-        local cursor_position = cursor_pos
-        
-        -- Find which line the cursor is on right now - force recalculation
-        local all_lines = self:SplitTextIntoLines(text_content)
-        local position = 0
-        local current_line_index = 1
-        local current_line_start = 0
-        
-        for i, line in ipairs(all_lines) do
-            local line_start = position
-            local line_end = position + #line
-            
-            -- If cursor is in this range, this is our line
-            if cursor_position >= line_start and cursor_position <= line_end then
-                current_line_index = i
-                current_line_start = line_start
-                break
-            end
-            
-            -- Special handling for newline character
-            if i < #all_lines and cursor_position == line_end + 1 then
-                current_line_index = i + 1  -- Next line
-                current_line_start = line_end + 1
-                break
-            end
-            
-            position = line_end + 1  -- +1 for newline
-        end
-        
-        -- Always go to start of current line
-        new_pos = current_line_start
-    elseif key == KEY_END then
-        -- Fix for End key: Only move horizontally, never vertically
-        
-        -- Get full text and cursor position for reliable line detection
-        local text_content = widget:GetString() or ""
-        local cursor_position = cursor_pos
-        
-        -- Find which line the cursor is on right now - force recalculation
-        local all_lines = self:SplitTextIntoLines(text_content)
-        local position = 0
-        local current_line_index = 1
-        local current_line_start = 0
-        local current_line_end = 0
-        
-        for i, line in ipairs(all_lines) do
-            local line_start = position
-            local line_end = position + #line
-            
-            -- If cursor is in this range, this is our line
-            if cursor_position >= line_start and cursor_position <= line_end then
-                current_line_index = i
-                current_line_start = line_start
-                current_line_end = line_end
-                break
-            end
-            
-            -- Special handling for newline character
-            if i < #all_lines and cursor_position == line_end + 1 then
-                current_line_index = i + 1  -- Next line
-                current_line_start = line_end + 1
-                current_line_end = line_end + 1 + #all_lines[i+1]
-                break
-            end
-            
-            position = line_end + 1  -- +1 for newline
-        end
-        
-        -- Always go to end of current line
-        new_pos = current_line_end
-    elseif key == KEY_PAGEUP then
-        -- First check if already at the first line
-        if current_line == 1 then
-            -- If already at the first line, just go to the beginning of the line
-            new_pos = 0
-        else
-            -- Move cursor up 10 lines, preserving column position
-            local target_line = math.max(1, current_line - 10)
-            local current_column = cursor_pos - line_start
-            
-            -- Find the position in the target line
-            local target_line_pos = 0
-            for i = 1, target_line - 1 do
-                if i <= #lines then
-                    target_line_pos = target_line_pos + #lines[i] + 1
-                end
-            end
-            
-            -- Calculate new position with column clamping
-            local target_line_text = lines[target_line] or ""
-            local target_column = math.min(current_column, #target_line_text)
-            new_pos = target_line_pos + target_column
-        end
-    elseif key == KEY_PAGEDOWN then
-        -- First check if already at the last line
-        if current_line == #lines then
-            -- If already at the last line, just go to the end of the line
-            new_pos = #text
-        else
-            -- Move cursor down 10 lines, preserving column position
-            local target_line = math.min(#lines, current_line + 10)
-            local current_column = cursor_pos - line_start
-            
-            -- Find the position in the target line
-            local target_line_pos = 0
-            for i = 1, target_line - 1 do
-                if i <= #lines then
-                    target_line_pos = target_line_pos + #lines[i] + 1
-                end
-            end
-            
-            -- Calculate new position with column clamping
-            local target_line_text = lines[target_line] or ""
-            local target_column = math.min(current_column, #target_line_text)
-            new_pos = target_line_pos + target_column
-        end
-    else
-        -- Not a cursor movement key
+    -- If no movement key was handled, return false
+    if not handled then
         return false
     end
-    
+
     -- Do nothing if position hasn't changed
     if new_pos == cursor_pos then
-        return true
+        return true -- Still handled, just no change
     end
     
+    -- Clamp new_pos just in case
+    new_pos = math.max(0, math.min(#text, new_pos))
+
     -- Update cursor position safely
     if widget.SetEditCursorPos then
         widget:SetEditCursorPos(new_pos)
@@ -329,6 +339,10 @@ function EditorKeyHandler:HandleCursorMovement(widget, key)
     -- Update selection end if selecting
     if selecting then
         self.selection_end = new_pos
+        -- Apply visual highlighting if editor supports it
+        if widget.ShowHighlight then
+            widget:ShowHighlight(math.min(self.selection_start, self.selection_end), math.max(self.selection_start, self.selection_end))
+        end
     end
     
     -- Notify editor to scroll if needed
@@ -336,8 +350,9 @@ function EditorKeyHandler:HandleCursorMovement(widget, key)
         self.editor:ScrollToCursor()
     end
     
-    return true
+    return true -- Indicate key was handled
 end
+
 
 --[[
     Handles backspace key press.
@@ -346,7 +361,7 @@ end
     @return (boolean) True if handled, false otherwise
 ]]
 function EditorKeyHandler:HandleBackspace(widget)
-    local current_text = widget:GetString()
+    local current_text = widget:GetString() or ""
     
     -- Safely get cursor position
     local cursor_pos = 0
@@ -356,41 +371,39 @@ function EditorKeyHandler:HandleBackspace(widget)
         cursor_pos = widget.inst.TextEditWidget:GetEditCursorPos()
     end
     
+    local new_cursor_pos = cursor_pos
+    local new_text = current_text
+
     -- Handle selection-based deletion if active
     if self.selection_active and self.selection_start ~= self.selection_end then
         local start_pos = math.min(self.selection_start, self.selection_end)
         local end_pos = math.max(self.selection_start, self.selection_end)
         
-        local new_text = current_text:sub(1, start_pos) .. current_text:sub(end_pos + 1)
-        widget:SetString(new_text)
+        new_text = current_text:sub(1, start_pos) .. current_text:sub(end_pos + 1)
+        new_cursor_pos = start_pos
         
-        -- Safely set cursor position
-        if widget.SetEditCursorPos then
-            widget:SetEditCursorPos(start_pos)
-        elseif widget.inst and widget.inst.TextEditWidget then
-            widget.inst.TextEditWidget:SetEditCursorPos(start_pos)
-        end
-        
-        -- Clear selection
+        -- Clear selection state
         self.selection_active = false
-        
-        -- Notify editor to scroll if needed
-        if self.editor and self.editor.ScrollToCursor then
-            self.editor:ScrollToCursor()
-        end
-        return true
+        if widget.ClearHighlight then widget:ClearHighlight() end
+
+    -- Handle normal backspace if cursor is not at the beginning
+    elseif cursor_pos > 0 then
+        new_text = current_text:sub(1, cursor_pos - 1) .. current_text:sub(cursor_pos + 1)
+        new_cursor_pos = cursor_pos - 1
+    else
+        -- At beginning of text and no selection, do nothing
+        return false
     end
     
-    if cursor_pos > 0 then
-        -- Delete char to the left of cursor
-        local new_text = current_text:sub(1, cursor_pos - 1) .. current_text:sub(cursor_pos + 1)
+    -- Update text and cursor if changes were made
+    if new_text ~= current_text then
         widget:SetString(new_text)
         
         -- Safely set cursor position
         if widget.SetEditCursorPos then
-            widget:SetEditCursorPos(cursor_pos - 1)
+            widget:SetEditCursorPos(new_cursor_pos)
         elseif widget.inst and widget.inst.TextEditWidget then
-            widget.inst.TextEditWidget:SetEditCursorPos(cursor_pos - 1)
+            widget.inst.TextEditWidget:SetEditCursorPos(new_cursor_pos)
         end
         
         -- Notify editor to scroll if needed
@@ -410,7 +423,7 @@ end
     @return (boolean) Always returns true
 ]]
 function EditorKeyHandler:HandleEnterKey(widget)
-    local text = widget:GetString()
+    local text = widget:GetString() or ""
     
     -- Safely get cursor position
     local cursor_pos = 0
@@ -420,37 +433,36 @@ function EditorKeyHandler:HandleEnterKey(widget)
         cursor_pos = widget.inst.TextEditWidget:GetEditCursorPos()
     end
     
-    -- Handle selection-based deletion if active
+    local new_text
+    local new_cursor_pos
+
+    -- Handle selection replacement if active
     if self.selection_active and self.selection_start ~= self.selection_end then
         local start_pos = math.min(self.selection_start, self.selection_end)
         local end_pos = math.max(self.selection_start, self.selection_end)
         
-        local new_text = text:sub(1, start_pos) .. "\n" .. text:sub(end_pos + 1)
-        widget:SetString(new_text)
+        new_text = text:sub(1, start_pos) .. "\n" .. text:sub(end_pos + 1)
+        new_cursor_pos = start_pos + 1
         
-        -- Safely set cursor position
-        if widget.SetEditCursorPos then
-            widget:SetEditCursorPos(start_pos + 1)
-        elseif widget.inst and widget.inst.TextEditWidget then
-            widget.inst.TextEditWidget:SetEditCursorPos(start_pos + 1)
-        end
-        
-        -- Clear selection
+        -- Clear selection state
         self.selection_active = false
+        if widget.ClearHighlight then widget:ClearHighlight() end
     else
         -- Insert a newline at cursor position
-        local new_text = text:sub(1, cursor_pos) .. "\n" .. text:sub(cursor_pos + 1)
-        widget:SetString(new_text)
-        
-        -- Safely set cursor position
-        if widget.SetEditCursorPos then
-            widget:SetEditCursorPos(cursor_pos + 1)
-        elseif widget.inst and widget.inst.TextEditWidget then
-            widget.inst.TextEditWidget:SetEditCursorPos(cursor_pos + 1)
-        end
+        new_text = text:sub(1, cursor_pos) .. "\n" .. text:sub(cursor_pos + 1)
+        new_cursor_pos = cursor_pos + 1
     end
     
-    -- Maintain editing state
+    widget:SetString(new_text)
+    
+    -- Safely set cursor position
+    if widget.SetEditCursorPos then
+        widget:SetEditCursorPos(new_cursor_pos)
+    elseif widget.inst and widget.inst.TextEditWidget then
+        widget.inst.TextEditWidget:SetEditCursorPos(new_cursor_pos)
+    end
+    
+    -- Maintain editing state (might be redundant if SetString does this)
     widget:SetEditing(true)
     
     -- Notify editor to scroll if needed
@@ -473,21 +485,18 @@ function EditorKeyHandler:SplitTextIntoLines(text)
     end
     
     local lines = {}
-    local current_line = ""
-    
-    for i = 1, #text do
-        local char = text:sub(i, i)
-        if char == "\n" then
-            table.insert(lines, current_line)
-            current_line = ""
+    local start = 1
+    while true do
+        local nl_pos = string.find(text, "\n", start, true) -- Find next newline, literal search
+        if nl_pos then
+            table.insert(lines, text:sub(start, nl_pos - 1))
+            start = nl_pos + 1
         else
-            current_line = current_line .. char
+            table.insert(lines, text:sub(start)) -- Add the rest of the text
+            break
         end
     end
-    
-    -- Add the last line
-    table.insert(lines, current_line)
-    
+    -- If the text ends with a newline, find adds an empty string at the end, which is correct.
     return lines
 end
 
@@ -496,46 +505,66 @@ end
     
     @param text (string) The full text
     @param cursor_pos (number) Current cursor position
-    @param lines (table) Lines array from SplitTextIntoLines
-    @return (number, number, number) Line number, line start position, line end position
+    @param lines (table) Lines array from SplitTextIntoLines (can be nil, will recalculate)
+    @return (number, number, number) Line number (1-based), line start position (0-based), line end position (0-based, inclusive)
 ]]
+--[[ MODIFIED FUNCTION ]]
+-- Gets information about the line containing the cursor.
+-- Returns line number (1-based), line start position (0-based), line end position (0-based, inclusive of last char).
 function EditorKeyHandler:GetCurrentLineInfo(text, cursor_pos, lines)
-    -- If text is empty, return defaults
-    if #lines == 0 or #text == 0 then
-        return 1, 0, 0
-    end
-    
-    local pos = 0
-    
-    -- Explicitly handle cursor at position 0
-    if cursor_pos == 0 then
-        return 1, 0, #lines[1]
-    end
-    
+    lines = lines or self:SplitTextIntoLines(text)
+
+    if #lines == 0 then return 1, 0, 0 end
+    if #lines == 1 and #lines[1] == 0 and cursor_pos == 0 then return 1, 0, 0 end
+
+    local current_char_pos = 0
     for i = 1, #lines do
-        local line_start = pos
-        local line_end = pos + #lines[i]
-        
-        -- Check if cursor is in this line (inclusive of line_start, line_end)
-        if cursor_pos >= line_start and cursor_pos <= line_end then
+        local line_start = current_char_pos
+        local line_len = #lines[i]
+        local line_end = line_start + line_len -- Position *after* the last character of the line content
+
+        -- Case 1: Cursor is strictly within the line's content characters
+        if cursor_pos >= line_start and cursor_pos < line_end then
             return i, line_start, line_end
         end
-        
-        -- Check if cursor is at the newline after this line
+
+        -- Case 2: Cursor is exactly at the end of the line's content
+        if cursor_pos == line_end then
+            -- If it's the last line OR the next char isn't a newline, it belongs to this line
+            if i == #lines or text:sub(line_end + 1, line_end + 1) ~= "\n" then
+                 return i, line_start, line_end
+            -- If it's exactly at the end of content AND followed by a newline,
+            -- we need to check if the cursor logically belongs to the start of the next line.
+            -- Let the next check handle this.
+            end
+        end
+
+        -- Case 3: Cursor is exactly at the newline position following this line
         if i < #lines and cursor_pos == line_end + 1 then
-            return i, line_start, line_end
+            -- This position logically belongs to the START of the *next* line (i+1)
+            local next_line_start = line_end + 1
+            local next_line_len = #lines[i+1]
+            local next_line_end = next_line_start + next_line_len
+            return i + 1, next_line_start, next_line_end
         end
-        
-        -- Move to next line (add 1 for newline)
-        pos = line_end + 1
+
+        -- Move position marker to the start of the next potential line
+        current_char_pos = line_end + 1 -- Assumes newline exists
     end
-    
-    -- Cursor is past the end of text - return last line
-    return #lines, pos - #lines[#lines], pos - 1
+
+    -- Fallback: Cursor is likely past the very end of the text
+    -- Return info for the last line
+    local last_line_idx = math.max(1, #lines) -- Ensure index is at least 1
+    local last_line_len = #lines[last_line_idx]
+    local last_line_start = math.max(0, #text - last_line_len) -- Recalculate start based on end
+    local last_line_end = last_line_start + last_line_len
+    return last_line_idx, last_line_start, last_line_end
 end
+
 
 --[[
     Gets cursor position for a specific line and column.
+    DEPRECATED / NOT USED by current navigation logic, kept for potential future use.
     
     @param text (string) The full text
     @param line_num (number) Target line number
@@ -543,28 +572,28 @@ end
     @param lines (table) Lines array from SplitTextIntoLines
     @return (number) Cursor position
 ]]
-function EditorKeyHandler:GetPositionForLine(text, line_num, column, lines)
-    -- Clamp line number
-    line_num = math.max(1, math.min(#lines, line_num))
+-- function EditorKeyHandler:GetPositionForLine(text, line_num, column, lines)
+--     -- Clamp line number
+--     line_num = math.max(1, math.min(#lines, line_num))
     
-    local pos = 0
+--     local pos = 0
     
-    -- Move position to start of target line
-    for i = 1, line_num - 1 do
-        if i <= #lines then -- Safety check
-            pos = pos + #lines[i] + 1  -- +1 for newline
-        end
-    end
+--     -- Move position to start of target line
+--     for i = 1, line_num - 1 do
+--         if i <= #lines then -- Safety check
+--             pos = pos + #lines[i] + 1  -- +1 for newline
+--         end
+--     end
     
-    -- Add column offset (clamped to line length)
-    if line_num <= #lines then -- Safety check
-        local target_line = lines[line_num]
-        local target_column = math.min(column, #target_line)
-        pos = pos + target_column
-    end
+--     -- Add column offset (clamped to line length)
+--     if line_num <= #lines then -- Safety check
+--         local target_line = lines[line_num]
+--         local target_column = math.min(column, #target_line)
+--         pos = pos + target_column
+--     end
     
-    -- Clamp final position to text length
-    return math.min(pos, #text)
-end
+--     -- Clamp final position to text length
+--     return math.min(pos, #text)
+-- end
 
 return EditorKeyHandler
