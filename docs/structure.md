@@ -79,26 +79,31 @@ dst-quicknotes/
 ### 3. Input Processing
 
 #### `editor_key_handler.lua`
-- **Purpose**: Keyboard navigation and editing
+- **Purpose**: Handles advanced keyboard navigation and editing commands within the text editor.
 - **Responsibilities**:
-  - Processes special keys (Home, End, PgUp/Down)
-  - Manages cursor movement between lines
-  - Implements text selection
+  - Processes special keys: Arrow keys (multi-line), Home/End (line start/end), PageUp/Down (~10 lines), **Ctrl+Left/Right (word jump)**.
+  - Manages cursor movement logic based on plain text representation.
+  - Implements text selection state management (logical only) via Shift modifier.
+  - Handles Backspace, Delete, and Enter key actions, respecting selections.
 - **Key Methods**:
-  - `HandleCursorMovement`: Moves cursor based on navigation keys
-  - `GetCurrentLineInfo`: Determines which line contains cursor
-  - `SplitTextIntoLines`: Parses text into navigable lines
+  - `ProcessKey`: Main dispatcher for raw key events.
+  - `HandleCursorMovement`: Calculates new cursor position based on navigation keys.
+  - `HandleBackspace`/`HandleDelete`/`HandleEnterKey`: Perform text modifications.
+  - `FindPreviousWordPosition`/`FindNextWordPosition`: Helper functions for word navigation.
+  - `GetCurrentLineInfo`: Determines line information based on plain cursor position.
+  - `SplitTextIntoLines`: Parses plain text into lines for navigation calculations.
 
 #### `text_input_handler.lua`
-- **Purpose**: Character input processing
+- **Purpose**: Handles character input and automatic formatting.
 - **Responsibilities**:
-  - Handles text insertion at cursor position
-  - Manages automatic line breaking
-  - Processes special input like backspace and enter
+  - Handles text insertion at cursor position.
+  - Implements automatic line breaking (word wrap) based on calculated visual width of plain text.
+  - Processes paste events (Ctrl+V).
+  - Filters invalid input characters.
 - **Key Methods**:
-  - `HandleTextInput`: Processes incoming characters
-  - `ProcessCharacterInput`: Inserts text at cursor
-  - `CheckLineBreaking`: Implements word wrap
+  - `HandleTextInput`: Processes incoming characters for insertion or selection replacement.
+  - `CheckLineBreaking`: Calculates line width and inserts `\n` if needed.
+  - `SetupPasteHandler`: Integrates with paste system.
 
 ### 4. UI Components
 
@@ -144,13 +149,15 @@ dst-quicknotes/
 The text editing functionality is built on DST's `TextEdit` widget with significant enhancements:
 
 1. **Cursor Management**
-   - The mod extends DST's basic cursor functionality with multi-line navigation
-   - Line detection uses character counting and newline detection
-   - Cursor position is maintained during operations through careful state tracking
+   - The mod implements fully custom multi-line navigation logic in `EditorKeyHandler`.
+   - Supports standard Arrow keys, Home/End for line boundaries, PageUp/PageDown for larger jumps, and **Ctrl+Left/Right for word-by-word movement.**
+   - Cursor position is carefully tracked and updated based on logical plain text indices, translated back to raw indices for the underlying widget.
+   - Column position is preserved during vertical movement where possible, clamping to the destination line's length otherwise.
+
 
 2. **Input Processing Flow**
    ```
-   User Input → OnRawKey → ProcessKey → Specialized Handlers → Text Manipulation → UI Update
+   User Input -> OnRawKey/OnTextInput -> ProcessKey/HandleTextInput -> Specialized Handlers (Movement/Edit/Wrap) -> Text Manipulation (Plain Text) -> _UpdateEditorState (Set Raw Text & Raw Cursor) -> UI Update
    ```
 
 3. **Line Navigation System**
@@ -236,6 +243,18 @@ Future development or customization can leverage these extension points:
 - Implemented custom line detection algorithm that calculates line boundaries
 - Created specialized handlers for Home/End keys with precise line targeting
 - Added edge-case handling for cursor at line boundaries
+
+### Challenge: Advanced Cursor Navigation in DST's Limited Environment
+
+**Problem**: DST's basic `TextEdit` widget lacks sophisticated multi-line navigation (Up/Down between lines, Home/End, PageUp/Down, Word Jumping).
+
+**Solution**:
+- Implemented fully custom navigation logic within `EditorKeyHandler`.
+- Custom line detection (`GetCurrentLineInfo`, `SplitTextIntoLines`) and position calculation based on plain text indices.
+- Specialized handlers for Home/End, PageUp/Down, and **Ctrl+Arrow keys for word jumping** (`FindPreviousWordPosition`, `FindNextWordPosition`).
+- Careful management of cursor column position during vertical movement, with clamping to line ends.
+- Introduced (though currently basic) `PositionMapper` infrastructure to abstract raw vs. plain text indices, crucial for future tag support or complex text manipulation.
+
 
 ### Challenge: Text Input at Cursor Position
 

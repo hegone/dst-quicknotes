@@ -12,27 +12,35 @@ description =
 [[A handy notepad for jotting down notes that persist across worlds, caves, and game restarts.
 
 Features:
-- Draggable window (drag title bar)
-- Auto-saves every 30 seconds
-- Supports up to 10,000 characters
-- Full keyboard navigation with arrow keys, Home/End, Page Up/Down
-- White cursor for better visibility
-- Customizable text color and background
-- Adjustable background transparency
-- Click outside to close
+- Persistent notes between sessions.
+- Draggable window (drag title bar).
+- Auto-saves every 30 seconds.
+- Enhanced Keyboard Navigation:
+  - Arrow Keys for multi-line movement.
+  - Home/End keys for line start/end.
+  - PageUp/PageDown for multi-line jumps.
+  - Ctrl+Left/Right Arrow for word jumps.
+  - Shift + Navigation Keys for text selection (logical only).
+- Customizable text color, background color, and transparency.
+- White cursor for better visibility.
+- Supports up to 10,000 characters.
+- Click outside to close.
 
 Keyboard Shortcuts:
-- Press N (configurable) to toggle
-- Ctrl+S to save manually
-- Ctrl+R to reset
-- ESC to close
-- Arrow keys to navigate
-- Home/End to jump to start/end of line
-- Page Up/Down to navigate through longer notes
-- Enter for new lines]]
+- Press N (configurable) to toggle.
+- Ctrl+S to save manually.
+- Ctrl+R to reset notepad content.
+- ESC to close.
+- Arrow keys to navigate char by char.
+- Home/End keys to jump to line start/end.
+- PageUp/PageDown keys to jump ~10 lines.
+- Ctrl+Left/Right Arrow keys to jump word by word.
+- Shift + (Arrow/Home/End/Page/Ctrl+Arrow) to select text.
+- Enter for new lines.
+- Backspace/Delete to remove characters or selection.]]
 
 author = "Lumen"
-version = "0.5.0"
+version = "0.6.0"
 
 --[[ Compatibility Settings
     These flags determine which game versions can use the mod:
