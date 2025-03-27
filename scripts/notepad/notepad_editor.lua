@@ -1,3 +1,4 @@
+-- scripts/notepad/notepad_editor.lua
 --[[
     Notepad Editor Module for DST Quick Notes
     
@@ -58,7 +59,7 @@ local NotepadEditor = Class(function(self, parent, font, font_size)
     self.editor.selection_end = 0
     
     -- Initialize specialized handlers
-    self.key_handler = EditorKeyHandler(self)
+    self.key_handler = EditorKeyHandler(self) -- Pass self (NotepadEditor instance)
     self.text_input_handler = TextInputHandler(self.text_utils)
     
     self:InitializeEditor()
@@ -97,13 +98,13 @@ function NotepadEditor:InitializeEditor()
     editor.allow_newline = true
     
     -- Extend OnTextInput to handle selection and line breaking
+    -- Need to ensure 'self' inside this function refers to the TextEdit widget,
+    -- but we need access to the NotepadEditor instance's handlers.
+    local notepad_editor_instance = self -- Capture the NotepadEditor instance
     function editor:OnTextInput(text)
-        -- Store reference to the editor instance for easier access
-        local editor_instance = self.parent.parent.editor
-        
-        -- Handle the text input using our specialized handler
-        if editor_instance.text_input_handler:HandleTextInput(self, text, Config) then
-            editor_instance:ScrollToCursor()
+        -- Handle the text input using our specialized handler from the NotepadEditor instance
+        if notepad_editor_instance.text_input_handler:HandleTextInput(self, text, Config) then -- 'self' here is the TextEdit widget
+            notepad_editor_instance:ScrollToCursor() -- Call ScrollToCursor on the NotepadEditor instance
             return true
         end
         return false  -- Don't call base TextEdit.OnTextInput to prevent double input
@@ -113,9 +114,9 @@ function NotepadEditor:InitializeEditor()
     self.text_input_handler:SetupPasteHandler(editor)
     
     -- Set up key handler for all keyboard input
-    self.key_handler:SetupKeyHandler(editor)
+    self.key_handler:SetupKeyHandler(editor) -- Pass the TextEdit widget to the handler setup
     
-    -- Add direct access to TextEditWidget
+    -- Add direct access to TextEditWidget if needed (though direct access is often discouraged)
     if editor.inst and editor.inst.TextEditWidget then
         editor.TextEditWidget = editor.inst.TextEditWidget
     end
@@ -123,21 +124,20 @@ function NotepadEditor:InitializeEditor()
     -- Initialize focus handling using the FocusManager
     FocusManager:SetupEditorFocusHandlers(editor, Config.COLORS.EDITOR_TEXT)
     
-    -- Add highlighting support - prepare for text selection (upcoming)
-    self:SetupHighlighting()
+    -- REMOVED: Call to non-functional SetupHighlighting
+    -- self:SetupHighlighting()
 end
 
---[[
-    Sets up text highlighting/selection support.
-    This prepares the foundation for text selection.
-]]
+--[[ REMOVED: Non-functional highlighting setup
 function NotepadEditor:SetupHighlighting()
     local editor = self.editor
     
     -- Allow showing selection
+    -- This code attempted to define ShowHighlight/ClearHighlight based on
+    -- underlying TextWidget methods (SetHighlightRegion/ClearHighlightRegion)
+    -- which were found not to exist on the standard DST TextWidget.
+    --[[
     if editor.inst and editor.inst.TextWidget then
-        -- In core DST, TextWidget can highlight text portions
-        -- Here we set up the structure to support it
         editor.ShowHighlight = function(self, start_pos, end_pos)
             if self.inst and self.inst.TextWidget and self.inst.TextWidget.SetHighlightRegion then
                 self.inst.TextWidget:SetHighlightRegion(start_pos, end_pos)
@@ -150,14 +150,16 @@ function NotepadEditor:SetupHighlighting()
             end
         end
     end
-    
-    -- Set up mouse selection handlers
-    -- This is for a future implementation where text can be selected by dragging
+    ]]
+    -- Set up mouse selection handlers (Placeholder for potential future implementation)
+    --[[
     editor.OnMouseButton = function(self, button, down, x, y)
         -- Just call base OnMouseButton for now
         return TextEdit.OnMouseButton(self, button, down, x, y)
     end
+    ]]
 end
+--]]
 
 --[[ Text Manipulation Methods ]]--
 
@@ -167,6 +169,8 @@ end
     @return (string) The current editor content
 ]]
 function NotepadEditor:GetText()
+    -- Ensure editor exists before accessing GetString
+    if not self.editor then return "" end
     return self.editor:GetString()
 end
 
@@ -176,19 +180,29 @@ end
     @param text (string) The new text content (optional, defaults to empty string)
 ]]
 function NotepadEditor:SetText(text)
-    self.editor:SetString(text or "")
+    -- Ensure editor exists before setting text
+    if not self.editor then return end
+
+    local safe_text = text or ""
+    self.editor:SetString(safe_text)
     
     -- Ensure cursor is at end of text
     if self.editor.SetEditCursorPos then
-        self.editor:SetEditCursorPos(#(text or ""))
+        self.editor:SetEditCursorPos(#safe_text)
+    elseif self.editor.inst and self.editor.inst.TextEditWidget then
+         self.editor.inst.TextEditWidget:SetEditCursorPos(#safe_text)
     end
+    -- Reset scroll after setting text
+    self:ScrollToCursor() -- Scroll to end (or wherever cursor is now)
 end
 
 --[[
     Sets keyboard focus to the editor.
 ]]
 function NotepadEditor:SetFocus()
-    self.editor:SetFocus()
+    if self.editor then
+        self.editor:SetFocus()
+    end
 end
 
 --[[
@@ -198,58 +212,96 @@ end
 ]]
 function NotepadEditor:ScrollToCursor()
     local editor = self.editor
-    if not editor or not editor.SetScroll then return end
+    -- Check if editor and necessary methods/properties exist
+    if not editor or not editor.SetScroll or not editor.GetEditCursorPos or not editor.GetString then return end
     
     -- Get cursor position and editor dimensions
-    local cursor_pos = editor.GetEditCursorPos and editor:GetEditCursorPos() or 0
+    local cursor_pos = editor:GetEditCursorPos()
     local text = editor:GetString() or ""
-    local lines = self.text_utils:SplitByLine(text)
+    local lines = self.text_utils:SplitByLine(text) -- Use text_utils instance for consistency
     
     -- Calculate cursor line
     local cursor_line = 1
-    local pos = 0
-    for i, line in ipairs(lines) do
-        pos = pos + #line + 1  -- +1 for newline
-        if pos > cursor_pos then
-            cursor_line = i
-            break
+    local current_char_pos = 0
+    for i = 1, #lines do
+        local line_len = #lines[i]
+        -- Check if cursor is within this line content or exactly at the newline after it
+        if cursor_pos >= current_char_pos and cursor_pos <= current_char_pos + line_len then
+             cursor_line = i
+             break
+        -- If cursor is exactly at newline, it belongs to the start of the next line
+        elseif i < #lines and cursor_pos == current_char_pos + line_len + 1 then
+             cursor_line = i + 1
+             break
         end
+        current_char_pos = current_char_pos + line_len + 1 -- +1 for newline
     end
+    -- If loop finishes and cursor_line is still 1, check if it should be last line
+    if cursor_line == 1 and #lines > 1 and cursor_pos > current_char_pos then
+         cursor_line = #lines -- Cursor is past the end, associate with last line
+    end
+
     
     -- Calculate scroll position - improved algorithm
-    local line_height = editor.size or 25  -- Use editor's font size for line height
-    local visible_lines = Config.DIMENSIONS.EDITOR.HEIGHT / line_height
+    local line_height = editor.size or Config.FONT_SIZES.EDITOR -- Use editor's font size for line height approx.
+    local editor_height = Config.DIMENSIONS.EDITOR.HEIGHT
+    local visible_lines = math.max(1, math.floor(editor_height / line_height)) -- Ensure at least 1 visible line
     local total_lines = #lines
-    local max_lines_to_show = 3  -- How many lines to try to show above and below cursor
     
-    -- Ensure we don't divide by zero
-    if total_lines < 1 then total_lines = 1 end
-    
-    -- Calculate target scroll position to center cursor line
-    local ideal_top_line = math.max(1, cursor_line - max_lines_to_show)
-    local scroll_pos = (ideal_top_line - 1) / math.max(1, total_lines - visible_lines)
-    
-    -- Clamp scroll position to valid range
-    scroll_pos = math.max(0, math.min(1, scroll_pos))
-    
-    -- Apply scroll position with smooth animation
+    -- Ensure we don't divide by zero or have negative scroll range
+    local scrollable_lines = math.max(0, total_lines - visible_lines)
+    if scrollable_lines <= 0 then
+        editor:SetScroll(0) -- No scrolling needed if all lines fit
+        return
+    end
+
+    -- Determine the desired top visible line to keep cursor in view
+    local current_scroll_fraction = editor.scroll_pos or 0 -- Assuming scroll_pos is stored/accessible, otherwise need GetScroll()
+    local current_top_line = math.floor(current_scroll_fraction * scrollable_lines) + 1
+
+    local new_top_line = current_top_line
+
+    -- If cursor moved above the visible area
+    if cursor_line < current_top_line then
+        new_top_line = cursor_line
+    -- If cursor moved below the visible area
+    elseif cursor_line >= current_top_line + visible_lines then
+        new_top_line = cursor_line - visible_lines + 1
+    end
+
+    -- Clamp the new top line
+    new_top_line = math.max(1, math.min(new_top_line, total_lines - visible_lines + 1))
+
+    -- Calculate final scroll position (fraction 0 to 1)
+    local scroll_pos = (new_top_line - 1) / scrollable_lines
+    scroll_pos = math.max(0, math.min(1, scroll_pos)) -- Clamp final value
+
+    -- Apply scroll position (SetScroll expects fraction 0-1)
     editor:SetScroll(scroll_pos)
+    editor.scroll_pos = scroll_pos -- Store it if needed elsewhere, though GetScroll() would be better if available
 end
 
 --[[
-    Cleans up the editor widget.
+    Cleans up the editor widget and its components.
     Should be called when the notepad is being destroyed.
 ]]
 function NotepadEditor:Kill()
+    -- Clean up editor widget itself
     if self.editor then
         self.editor:Kill()
         self.editor = nil
     end
     
+    -- Clean up utility instances
     if self.text_utils then
         self.text_utils:Kill()
         self.text_utils = nil
     end
+
+    -- Nil out references to handlers (they don't have explicit Kill methods usually)
+    self.key_handler = nil
+    self.text_input_handler = nil
+    self.parent = nil -- Break cycle if parent holds reference back
 end
 
 return NotepadEditor

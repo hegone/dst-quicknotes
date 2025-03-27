@@ -132,7 +132,7 @@ function EditorKeyHandler:ProcessKey(widget, key, down)
 
     -- Handle Enter key for line breaks
     if key == KEY_ENTER or key == KEY_KP_ENTER then
-        return self:HandleEnterKey(widget) -- This line caused the crash, HandleEnterKey is restored below
+        return self:HandleEnterKey(widget)
     end
 
     -- Handle cursor movement and selection keys
@@ -249,8 +249,7 @@ function EditorKeyHandler:HandleCursorMovement(widget, key)
        if key == KEY_LEFT or key == KEY_RIGHT or key == KEY_UP or key == KEY_DOWN or 
           key == KEY_HOME or key == KEY_END or key == KEY_PAGEUP or key == KEY_PAGEDOWN then
           self.selection_active = false
-          -- Reset selection visual if editor supports it
-          if widget.ClearHighlight then widget:ClearHighlight() end
+          -- REMOVED: Non-functional call to widget:ClearHighlight()
        end
     end
     
@@ -375,15 +374,13 @@ function EditorKeyHandler:HandleCursorMovement(widget, key)
     -- Update selection end if selecting
     if selecting then
         self.selection_end = new_pos
-        -- Apply visual highlighting if editor supports it
-        -- NOTE: This still includes the diagnostic SetHighlightColour line from the previous step
-        -- We know this didn't work, but leaving it for now until the highlighting is properly addressed.
-        if widget.ShowHighlight then
-             if widget.inst and widget.inst.TextWidget and widget.inst.TextWidget.SetHighlightColour then
-                  widget.inst.TextWidget:SetHighlightColour(0, 0.5, 1, 1) -- Set highlight to blue (RGBA)
-             end
-            widget:ShowHighlight(math.min(self.selection_start, self.selection_end), math.max(self.selection_start, self.selection_end))
-        end
+        -- REMOVED: Non-functional highlighting code block
+        -- if widget.ShowHighlight then
+        --      if widget.inst and widget.inst.TextWidget and widget.inst.TextWidget.SetHighlightColour then
+        --           widget.inst.TextWidget:SetHighlightColour(0, 0.5, 1, 1) -- Blue
+        --      end
+        --     widget:ShowHighlight(math.min(self.selection_start, self.selection_end), math.max(self.selection_start, self.selection_end))
+        -- end
     end
     
     -- Notify editor to scroll if needed
@@ -420,10 +417,8 @@ function EditorKeyHandler:HandleBackspace(widget)
     if selection_was_active then
         local start_pos = math.min(self.selection_start, self.selection_end)
         local end_pos = math.max(self.selection_start, self.selection_end)
-
         new_text = current_text:sub(1, start_pos) .. current_text:sub(end_pos + 1)
         new_cursor_pos = start_pos
-
     -- Handle normal backspace if cursor is not at the beginning
     elseif cursor_pos > 0 then
         new_text = current_text:sub(1, cursor_pos - 1) .. current_text:sub(cursor_pos + 1)
@@ -447,7 +442,7 @@ function EditorKeyHandler:HandleBackspace(widget)
         -- Clear selection state here if it was active
         if selection_was_active then
              self.selection_active = false
-             if widget.ClearHighlight then widget:ClearHighlight() end
+             -- REMOVED: Non-functional call to widget:ClearHighlight()
         end
 
         -- Notify editor to scroll if needed
@@ -481,10 +476,8 @@ function EditorKeyHandler:HandleDelete(widget)
     if selection_was_active then
         local start_pos = math.min(self.selection_start, self.selection_end)
         local end_pos = math.max(self.selection_start, self.selection_end)
-
         new_text = current_text:sub(1, start_pos) .. current_text:sub(end_pos + 1)
         new_cursor_pos = start_pos -- Cursor stays at the start of the deleted selection
-
     -- Handle normal delete if cursor is not at the end
     elseif cursor_pos < #current_text then
         new_text = current_text:sub(1, cursor_pos) .. current_text:sub(cursor_pos + 2)
@@ -508,7 +501,7 @@ function EditorKeyHandler:HandleDelete(widget)
         -- Clear selection state here if it was active
         if selection_was_active then
              self.selection_active = false
-             if widget.ClearHighlight then widget:ClearHighlight() end
+             -- REMOVED: Non-functional call to widget:ClearHighlight()
         end
 
         -- Notify editor to scroll if needed
@@ -547,7 +540,10 @@ function EditorKeyHandler:HandleEnterKey(widget)
     if widget.SetEditCursorPos then widget:SetEditCursorPos(new_cursor_pos)
     elseif widget.inst and widget.inst.TextEditWidget then widget.inst.TextEditWidget:SetEditCursorPos(new_cursor_pos) end
 
-    if selection_was_active then self.selection_active = false; if widget.ClearHighlight then widget:ClearHighlight() end end
+    if selection_was_active then
+        self.selection_active = false
+        -- REMOVED: Non-functional call to widget:ClearHighlight()
+    end
 
     widget:SetEditing(true) -- May not be needed if SetString sets editing state
     if self.editor and self.editor.ScrollToCursor then self.editor:ScrollToCursor() end
