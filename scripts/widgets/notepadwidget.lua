@@ -52,8 +52,18 @@ local NotepadWidget = Class(Screen, function(self)
     -- Initialize input handling
     self.input_handler = InputHandler(self)
     
-    -- Initialize editor after UI is set up
-    self.editor = NotepadEditor(self.root, DEFAULTFONT, Config.FONT_SIZES.EDITOR)
+    -- Initialize editor after UI is set up (flag-gated Scratch Editor support)
+    if Config.USE_SCRATCH_EDITOR then
+        local ScratchEditor = require "widgets/scratch_editor"
+        self.editor = self.root:AddChild(ScratchEditor(
+            Config.DIMENSIONS.EDITOR.WIDTH,
+            Config.DIMENSIONS.EDITOR.HEIGHT,
+            DEFAULTFONT,
+            Config.FONT_SIZES.EDITOR
+        ))
+    else
+        self.editor = NotepadEditor(self.root, DEFAULTFONT, Config.FONT_SIZES.EDITOR)
+    end
     
     -- Set up focus management, similar to ConsoleScreen approach
     FocusManager:SetupWidgetFocus(self, self.editor.editor)
@@ -97,7 +107,11 @@ function NotepadWidget:SetupShortcuts()
             if key == KEY_A and TheInput:IsKeyDown(KEY_CTRL) then
                 if self.editor and self.editor.editor then
                     local editor = self.editor.editor
-                    local text = editor:GetString()
+                    if not (editor.GetString and editor.selection_active ~= nil) then
+                        return false
+                    end
+
+                    local text = editor:GetString() or ""
                     
                     -- Set selection to cover entire text
                     editor.selection_active = true
@@ -197,7 +211,9 @@ function NotepadWidget:OnBecomeActive()
     self.inst:DoTaskInTime(0.1, function()
         if self.editor and self.editor.editor then
             self.editor.editor:SetFocus()
-            self.editor.editor:SetEditing(true)
+            if self.editor.editor.SetEditing then
+                self.editor.editor:SetEditing(true)
+            end
         end
     end)
 end
@@ -212,7 +228,9 @@ function NotepadWidget:OnBecomeInactive()
     
     -- Explicitly stop editing, mirroring ConsoleScreen's cleanup
     if self.editor and self.editor.editor then
-        self.editor.editor:SetEditing(false)
+        if self.editor.editor.SetEditing then
+            self.editor.editor:SetEditing(false)
+        end
     end
     
     -- Play sound when closing
@@ -233,7 +251,9 @@ function NotepadWidget:Close()
     
     -- Stop editing explicitly before closing, like ConsoleScreen does
     if self.editor and self.editor.editor then
-        self.editor.editor:SetEditing(false)
+        if self.editor.editor.SetEditing then
+            self.editor.editor:SetEditing(false)
+        end
     end
     
     -- Save and clean up
@@ -317,7 +337,9 @@ function NotepadWidget:Reset(save_state)
     -- Set focus after reset, consistent with ConsoleScreen behavior
     if self.editor.editor then
         self.editor.editor:SetFocus()
-        self.editor.editor:SetEditing(true)
+        if self.editor.editor.SetEditing then
+            self.editor.editor:SetEditing(true)
+        end
     end
     
     -- Show feedback
@@ -386,7 +408,9 @@ function NotepadWidget:OnDestroy()
     
     -- Stop editing explicitly before destroying, like ConsoleScreen
     if self.editor and self.editor.editor then
-        self.editor.editor:SetEditing(false)
+        if self.editor.editor.SetEditing then
+            self.editor.editor:SetEditing(false)
+        end
     end
     
     -- Clean up state and input handlers

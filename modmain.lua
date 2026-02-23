@@ -23,6 +23,8 @@ local TOGGLE_KEY = GetModConfigData("TOGGLE_KEY")
 local TEXT_COLOR = GetModConfigData("TEXT_COLOR")
 local BG_COLOR = GetModConfigData("BG_COLOR")
 local BG_OPACITY = GetModConfigData("BG_OPACITY")
+local USE_SCRATCH_EDITOR = GetModConfigData("USE_SCRATCH_EDITOR") or false
+local DEBUG_EDITOR = GetModConfigData("DEBUG_EDITOR") or false
 
 --[[
     Asset Registration
@@ -41,7 +43,13 @@ Assets = {
 
 -- Load and initialize configuration module
 local Config = require "notepad/config"
-Config.UpdateConfig({ TEXT_COLOR = TEXT_COLOR, BG_COLOR = BG_COLOR, BG_OPACITY = BG_OPACITY })
+Config.UpdateConfig({
+    TEXT_COLOR = TEXT_COLOR,
+    BG_COLOR = BG_COLOR,
+    BG_OPACITY = BG_OPACITY,
+    USE_SCRATCH_EDITOR = USE_SCRATCH_EDITOR,
+    DEBUG_EDITOR = DEBUG_EDITOR,
+})
 
 -- Make the notepad widget accessible globally
 _G.NotepadWidget = require "widgets/notepadwidget"

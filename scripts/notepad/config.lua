@@ -86,9 +86,23 @@ local SETTINGS = {
     MAX_LINE_WIDTH = 420                 -- Maximum line width in pixels before forcing newline
 }
 
+-- Exported configuration object.
+-- NOTE: Feature flags must default to false to protect existing users.
+local Config = {
+    FONT_SIZES = FONT_SIZES,
+    DIMENSIONS = DIMENSIONS,
+    COLORS = COLORS,
+    SETTINGS = SETTINGS,
+
+    USE_SCRATCH_EDITOR = false,
+    DEBUG_EDITOR = false,
+}
+
 -- Function to update configuration with user settings
 -- Should be called once from modmain after loading mod config data
 local function UpdateConfig(modConfigData)
+    modConfigData = modConfigData or {}
+
     local text_color_key = modConfigData.TEXT_COLOR or "WHITE"
     local bg_color_key = modConfigData.BG_COLOR or "DARK"
     local bg_opacity_val = modConfigData.BG_OPACITY or 0.7
@@ -108,13 +122,11 @@ local function UpdateConfig(modConfigData)
     COLORS.TITLE_BG_TINT = GetUserBgColor()
     COLORS.TITLE_TEXT = GetUserTextColor()
     COLORS.EDITOR_TEXT = GetUserTextColor()
+
+    -- Feature flags
+    Config.USE_SCRATCH_EDITOR = modConfigData.USE_SCRATCH_EDITOR == true
+    Config.DEBUG_EDITOR = modConfigData.DEBUG_EDITOR == true
 end
 
--- Export all configuration constants and the UpdateConfig function
-return {
-    FONT_SIZES = FONT_SIZES,
-    DIMENSIONS = DIMENSIONS,
-    COLORS = COLORS,
-    SETTINGS = SETTINGS,
-    UpdateConfig = UpdateConfig
-}
+Config.UpdateConfig = UpdateConfig
+return Config

@@ -122,5 +122,25 @@ configuration_options = {
             {description = "Very Transparent", data = 0.1},
         },
         default = 0.7,
-    }
+    },
+    {
+        name = "USE_SCRATCH_EDITOR",
+        label = "Use Scratch Editor (Experimental)",
+        hover = "Enable the new Scratch Editor (WIP). Keep OFF for the stable editor.",
+        options = {
+            {description = "Off", data = false},
+            {description = "On", data = true},
+        },
+        default = false,
+    },
+    {
+        name = "DEBUG_EDITOR",
+        label = "Debug Editor HUD",
+        hover = "Show a debug HUD (caret/selection/viewport/hit test) for the Scratch Editor.",
+        options = {
+            {description = "Off", data = false},
+            {description = "On", data = true},
+        },
+        default = false,
+    },
 }
