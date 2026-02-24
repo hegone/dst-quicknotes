@@ -28,10 +28,15 @@ dst-quicknotes/
 │   │   ├── sound_manager.lua     # Audio feedback management
 │   │   ├── text_input_handler.lua # Text input processing
 │   │   └── text_utils.lua        # Text manipulation utilities
+│   ├── scratch/          # Scratch Editor (experimental)
+│   │   ├── document.lua         # Line-array document model (pure text edits)
+│   │   └── util.lua             # DST-independent helpers (M0 debug/HUD)
 │   └── widgets/          # UI widget components
 │       ├── notepad_state.lua     # State management for notepad
 │       ├── notepad_ui.lua        # UI components and layout
 │       └── notepadwidget.lua     # Main widget controller
+│       ├── scratch_debug_overlay.lua # Scratch Editor debug HUD
+│       └── scratch_editor.lua        # Scratch Editor stub (flag-gated)
 └── modicon.tex           # Mod icon
 ```
 

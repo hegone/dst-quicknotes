@@ -66,7 +66,17 @@ local NotepadWidget = Class(Screen, function(self)
     end
     
     -- Set up focus management, similar to ConsoleScreen approach
-    FocusManager:SetupWidgetFocus(self, self.editor.editor)
+    local focus_target = nil
+    if self.editor then
+        -- NotepadEditor wraps a TextEdit at `.editor`.
+        -- ScratchEditor exposes a top-level widget and does not guarantee the same shape.
+        if self.editor.editor and self.editor.editor.SetFocus then
+            focus_target = self.editor.editor
+        elseif self.editor.SetFocus then
+            focus_target = self.editor
+        end
+    end
+    FocusManager:SetupWidgetFocus(self, focus_target)
     
     -- Set default focus and load saved notes
     self:LoadNotes()
@@ -209,10 +219,19 @@ function NotepadWidget:OnBecomeActive()
     -- Set focus after a short delay to allow animation to complete
     -- This mirrors ConsoleScreen's approach to focus management
     self.inst:DoTaskInTime(0.1, function()
-        if self.editor and self.editor.editor then
-            self.editor.editor:SetFocus()
-            if self.editor.editor.SetEditing then
-                self.editor.editor:SetEditing(true)
+        if not self.editor then return end
+
+        local focus = nil
+        if self.editor.editor and self.editor.editor.SetFocus then
+            focus = self.editor.editor
+        elseif self.editor.SetFocus then
+            focus = self.editor
+        end
+
+        if focus and focus.SetFocus then
+            focus:SetFocus()
+            if focus.SetEditing then
+                focus:SetEditing(true)
             end
         end
     end)

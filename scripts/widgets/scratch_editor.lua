@@ -16,27 +16,11 @@
 ]]
 
 local Widget = require "widgets/widget"
-local ImageButton = require "widgets/imagebutton"
+local Image = require "widgets/image"
 
 local Config = require "notepad/config"
 local ScratchUtil = require "scratch/util"
 local ScratchDebugOverlay = require "widgets/scratch_debug_overlay"
-
-local function SetImageButtonTransparent(btn)
-    if not btn then return end
-    if btn.SetImageNormalColour then
-        btn:SetImageNormalColour(0, 0, 0, 0)
-    end
-    if btn.SetImageOverColour then
-        btn:SetImageOverColour(0, 0, 0, 0)
-    end
-    if btn.SetImageFocusColour then
-        btn:SetImageFocusColour(0, 0, 0, 0)
-    end
-    if btn.SetImageDisabledColour then
-        btn:SetImageDisabledColour(0, 0, 0, 0)
-    end
-end
 
 local ScratchEditor = Class(Widget, function(self, width, height, font, font_size)
     Widget._ctor(self, "ScratchEditor")
@@ -67,10 +51,13 @@ local ScratchEditor = Class(Widget, function(self, width, height, font, font_siz
     self.line_height = ScratchUtil.MeasureLineHeight(self.measurer, self.font, self.font_size)
 
     -- Keyboard sink + hit test surface
-    self.editor = self:AddChild(ImageButton("images/global.xml", "square.tex"))
+    -- Note: ImageButton does not expose SetSize reliably across DST builds.
+    -- Use a clickable transparent Image instead.
+    self.editor = self:AddChild(Image("images/global.xml", "square.tex"))
     self.editor:SetSize(self.width, self.height)
     self.editor:SetPosition(0, 0)
-    SetImageButtonTransparent(self.editor)
+    self.editor:SetTint(0, 0, 0, 0)
+    self.editor:SetClickable(true)
 
     -- Route mouse clicks to our hit test.
     self.editor.OnMouseButton = function(_, button, down, x, y)
@@ -109,8 +96,12 @@ function ScratchEditor:SetText(text)
 end
 
 function ScratchEditor:SetFocus()
-    if self.editor then
+    if self.editor and self.editor.SetFocus then
         self.editor:SetFocus()
+        return
+    end
+    if ScratchEditor._base and ScratchEditor._base.SetFocus then
+        ScratchEditor._base.SetFocus(self)
     end
 end
 
